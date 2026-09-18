@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sistema de Jogos</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23060c16'/><circle cx='21.5' cy='10.5' r='5.2' fill='%23ffc857'/><rect x='5' y='17' width='11.5' height='11.5' rx='2' fill='%2355e6a5'/></svg>">
+<style>
+  :root{
+    --bg:#08101d; --panel:#0d1726; --panel2:#111f33; --line:#26344e;
+    --text:#dce6f5; --dim:#8296b4; --faint:#5b6c88;
+    --green:#55e6a5; --yellow:#ffc857; --red:#ff667a; --blue:#5aa9ff; --violet:#b585ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:14px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}
+  button,select,input{font:inherit;color:inherit}
+  button{background:var(--panel2);border:1px solid var(--line);border-radius:7px;
+         padding:7px 13px;cursor:pointer}
+  button:hover:not(:disabled){border-color:var(--green);color:var(--green)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  button.on{background:#14342a;border-color:var(--green);color:var(--green)}
+  select,input{background:#0a1422;border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+  h1{font-size:16px;margin:0;letter-spacing:.5px}
+  h2{font-size:12px;margin:0 0 10px;color:var(--dim);text-transform:uppercase;letter-spacing:1.2px}
+
+  header{display:flex;align-items:center;gap:13px;flex-wrap:wrap;
+         padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+  header .sep{width:1px;height:24px;background:var(--line)}
+  header label{color:var(--dim);font-size:12px;display:flex;align-items:center;gap:6px}
+  .spacer{flex:1}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:16px;display:grid;
+        grid-template-columns:600px 1fr;gap:16px;align-items:start}
+  @media(max-width:1000px){.wrap{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+
+  #board{width:100%;height:auto;background:#060c16;border:1px solid var(--line);border-radius:8px}
+  .stats{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 10px;font-size:12px}
+  .stat b{color:var(--green);font-weight:600}
+  .stat.warn b{color:var(--yellow)}
+  .stat.bad b{color:var(--red)}
+
+  .link{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:8px;
+        border:1px solid var(--line);background:#0a1422;font-size:12px;margin-bottom:12px}
+  .led{width:9px;height:9px;border-radius:50%;background:var(--faint);flex:none}
+  .led.ok{background:var(--green);box-shadow:0 0 8px var(--green)}
+  .led.bad{background:var(--red);box-shadow:0 0 8px var(--red)}
+  .muted{color:var(--faint);font-size:12px}
+  .err{color:var(--red);font-size:12px;white-space:pre-wrap;margin-top:8px}
+
+  .traceStep{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line)}
+  .traceStep:last-child{border-bottom:0}
+  .hop{width:20px;height:20px;flex:none;border-radius:50%;background:var(--panel2);
+       border:1px solid var(--line);display:grid;place-items:center;font-size:11px;color:var(--dim)}
+  .traceBody{flex:1;min-width:0}
+  .traceLabel{font-size:12px;color:var(--dim);display:block}
+  .traceChoice{color:var(--violet)}
+  .guarded .traceChoice{color:var(--yellow)}
+  .guardNote{display:block;font-size:10.5px;color:var(--yellow);opacity:.85;margin-top:3px}
+  .conf{font-size:11px;padding:2px 7px;border-radius:99px;border:1px solid;white-space:nowrap}
+  .conf.hi{color:var(--green);border-color:#2b6b52;background:#12291f}
+  .conf.mid{color:var(--yellow);border-color:#6b5a2b;background:#2a2412}
+  .conf.lo{color:var(--red);border-color:#6b2b38;background:#2a1219}
+  .sigRow{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+  .sig{font-size:10px;padding:2px 7px;border-radius:5px;background:#12203a;
+       border:1px solid var(--line);color:var(--dim)}
+  .sig b{color:var(--text)}
+  .ferramentas{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .ferramentas button.on{background:#14342a;border-color:var(--green);color:var(--green)}
+  .mapMeta{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:10px}
+  .mapMeta label{font-size:11px;color:var(--dim);display:flex;flex-direction:column;gap:3px}
+  .mapMeta input{width:100%}
+  .mapMeta label:first-child{flex:1;min-width:150px}
+  .mapMeta label:not(:first-child) input{width:76px}
+  .mapBtns{display:flex;gap:7px;flex-wrap:wrap}
+  button.ok{border-color:#2b6b52;color:var(--green);background:#12291f}
+  #board.editando{cursor:crosshair}
+  .actions{display:flex;flex-wrap:wrap;gap:7px}
+  .actions button{flex:1 1 auto;min-width:118px}
+  code{background:#0a1422;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:11px}
+  .client{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px;
+          border-bottom:1px dashed var(--line)}
+  .client:last-child{border-bottom:0}
+  .client b{color:var(--blue);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .client.me b{color:var(--green)}
+  .act{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;
+       border-bottom:1px dashed var(--line)}
+  .act:last-child{border-bottom:0}
+  .act .n{color:var(--faint);font-size:10px;width:36px;flex:none}
+  .act .a{color:var(--violet);font-weight:600}
+  .act .who{color:var(--dim);font-size:10.5px;flex:1;min-width:0;
+            overflow:hidden;text-overflow:ellipsis;text-align:right}
+  .stale{color:var(--yellow);font-size:10px;border:1px solid #6b5a2b;
+         border-radius:99px;padding:1px 6px}
+  .finalRow{display:flex;align-items:center;gap:10px;margin-top:10px;padding-top:10px;
+            border-top:1px solid var(--line)}
+  .finalAction{font-size:18px;color:var(--green);font-weight:700}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎮 Sistema de Jogos</h1>
+  <span class="muted">servidor passivo · sem chave de API</span>
+  <div class="sep"></div>
+  <label>jogo <select id="gameSel"></select></label>
+  <label id="mapaCampo" hidden>mapa <select id="mapSel"></select></label>
+  <button id="editarMapa" hidden>✏ Editar mapa</button>
+  <button id="pause">⏸ Congelar</button>
+  <button id="passoModo" hidden
+          title="no passo a passo o mundo só anda quando chega uma ação">🎬 Passo a passo</button>
+  <button id="reset">↻ Reset</button>
+  <div class="spacer"></div>
+  <span id="conn" class="muted"></span>
+  <span class="muted">frame</span> <b id="frameNo" style="color:var(--green)">0</b>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <h2>Jogo <span id="gameName" class="muted"></span></h2>
+    <canvas id="board" width="560" height="420"></canvas>
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <div>
+    <div class="card" id="painelMapa" style="margin-bottom:16px" hidden>
+      <h2>Editor de mapa</h2>
+      <p class="muted" style="margin:0 0 9px">
+        Clique nas células do tabuleiro para pintar. Arraste para pintar várias.</p>
+      <div class="ferramentas" id="ferramentas">
+        <button data-tool="parede" class="on">⬛ Parede</button>
+        <button data-tool="spawn">🟡 Spawn</button>
+        <button data-tool="origem">🟩 Origem</button>
+        <button data-tool="apagar">🧽 Apagar</button>
+      </div>
+      <div class="mapMeta">
+        <label>nome <input id="mapNome" placeholder="ex.: Corredor estreito"></label>
+        <label>colunas <input id="mapCols" type="number" min="4" max="24"></label>
+        <label>linhas <input id="mapRows" type="number" min="4" max="24"></label>
+      </div>
+      <div class="mapBtns">
+        <button id="salvarMapa" class="ok">💾 Salvar</button>
+        <button id="novoMapa">＋ Novo</button>
+        <button id="limparMapa">Limpar paredes</button>
+        <button id="excluirMapa" class="danger">🗑 Excluir</button>
+        <button id="sairEditor">✔ Concluir</button>
+      </div>
+      <p class="muted" id="mapAviso" style="margin:9px 0 0"></p>
+    </div>
+
+    <div class="card" id="painelAcoes" style="margin-bottom:16px">
+      <h2>Mandar ação na mão</h2>
+      <p class="muted" style="margin:0 0 9px">
+        Este navegador é só mais um cliente. Os botões fazem
+        <code>POST /api/action</code> — a mesma porta que o framework usa.</p>
+      <div id="actionBtns" class="actions"></div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <h2>Clientes que plugaram</h2>
+      <div id="clients"><p class="muted">Ninguém pediu frame ainda.</p></div>
+    </div>
+
+    <div class="card">
+      <h2>Últimas ações recebidas</h2>
+      <div id="history"><p class="muted">Nenhuma ainda.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const ctx = $('#board').getContext('2d');
+let snap = null, dragHz = false;
+
+/* ---------------- desenho (dirigido pelo /api/view do servidor) ------------- */
+
+function moodColor(f){
+  if(f==null) return [110,125,150];
+  const stops=[[0,[85,230,165]],[1,[255,200,87]],[2,[255,102,122]]];
+  const v=Math.max(0,Math.min(2,f));
+  for(let i=0;i<stops.length-1;i++){
+    const [a,ca]=stops[i],[b,cb]=stops[i+1];
+    if(v>=a&&v<=b){const t=(v-a)/(b-a||1); return ca.map((c,k)=>Math.round(c+(cb[k]-c)*t));}
+  }
+  return stops[2][1];
+}
+const rgb=(c,a)=>a==null?`rgb(${c[0]},${c[1]},${c[2]})`:`rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+function roundRect(x,y,w,h,r){
+  ctx.beginPath(); ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+function wrapText(text,maxW){
+  const words=String(text).split(' '), lines=[]; let line='';
+  for(const w of words){
+    const test=line?line+' '+w:w;
+    if(ctx.measureText(test).width>maxW&&line){lines.push(line); line=w;} else line=test;
+  }
+  if(line) lines.push(line);
+  return lines;
+}
+function clearBoard(W,H){ ctx.clearRect(0,0,W,H); ctx.fillStyle='#060c16'; ctx.fillRect(0,0,W,H); }
+
+/* mesma conta usada para desenhar e para saber onde o mouse clicou */
+function vitaminGeom(v,W,H){
+  const cell=Math.floor(Math.min((W-70)/v.cols,(H-70)/v.rows));
+  const gw=cell*v.cols, gh=cell*v.rows;
+  return {cell,gw,gh,x0:Math.round((W-gw)/2),y0:Math.round((H-gh)/2)+8};
+}
+
+function drawVitamin(v,W,H){
+  clearBoard(W,H);
+  const {cell,gw,gh,x0,y0}=vitaminGeom(v,W,H);
+  ctx.strokeStyle='#1d2b44'; ctx.lineWidth=1;
+  for(let x=0;x<=v.cols;x++){ctx.beginPath();ctx.moveTo(x0+x*cell,y0);ctx.lineTo(x0+x*cell,y0+gh);ctx.stroke();}
+  for(let y=0;y<=v.rows;y++){ctx.beginPath();ctx.moveTo(x0,y0+y*cell);ctx.lineTo(x0+gw,y0+y*cell);ctx.stroke();}
+  for(const [bx,by] of v.barriers){
+    const pad=Math.max(3,cell*.12);
+    ctx.fillStyle='#3a1e2a'; ctx.fillRect(x0+bx*cell+pad,y0+by*cell+pad,cell-pad*2,cell-pad*2);
+    ctx.strokeStyle='#ff667a66'; ctx.strokeRect(x0+bx*cell+pad+.5,y0+by*cell+pad+.5,cell-pad*2-1,cell-pad*2-1);
+  }
+  /* pontos de spawn e origem só aparecem quando o mapa é fixo */
+  const mapa=editando?rascunhoMapa:v.map;
+  if(mapa){
+    ctx.lineWidth=2;
+    for(const [sx,sy] of (mapa.spawns||[])){
+      const cx=x0+sx*cell+cell/2, cy=y0+sy*cell+cell/2;
+      ctx.strokeStyle='#ffc85799';
+      ctx.beginPath(); ctx.arc(cx,cy,cell*.3,0,Math.PI*2); ctx.stroke();
+    }
+    if(mapa.start){
+      const bx=x0+mapa.start[0]*cell, by=y0+mapa.start[1]*cell;
+      ctx.strokeStyle='#55e6a599';
+      ctx.strokeRect(bx+3.5,by+3.5,cell-7,cell-7);
+    }
+  }
+
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  const vx=x0+v.vitamin[0]*cell+cell/2, vy=y0+v.vitamin[1]*cell+cell/2;
+  ctx.fillStyle='#ffc857'; ctx.beginPath(); ctx.arc(vx,vy,cell*.3,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#08101d'; ctx.font=`bold ${Math.max(11,cell*.34)}px ui-monospace`; ctx.fillText('V',vx,vy+1);
+  const px=x0+v.player[0]*cell+cell/2, py=y0+v.player[1]*cell+cell/2, s=cell*.6;
+  ctx.fillStyle='#55e6a5'; ctx.fillRect(px-s/2,py-s/2,s,s);
+  ctx.fillStyle='#06100c'; ctx.fillText('P',px,py+1);
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  ctx.fillStyle='#5b6c88'; ctx.font='11px ui-monospace';
+  ctx.fillText(editando
+    ? 'editando · ⬛ parede   ○ spawn   ▢ origem'
+    : 'P = player   V = vitamina   ■ = barreira',x0,y0+gh+20);
+}
+
+function drawRace(v,W,H){
+  clearBoard(W,H);
+  const roadW=Math.min(W-90,360), x0=(W-roadW)/2, laneW=roadW/v.lanes;
+  ctx.fillStyle='#0d1726'; ctx.fillRect(x0,0,roadW,H);
+  ctx.strokeStyle='#26344e'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(x0,0); ctx.lineTo(x0,H);
+  ctx.moveTo(x0+roadW,0); ctx.lineTo(x0+roadW,H); ctx.stroke();
+  ctx.setLineDash([16,20]); ctx.lineWidth=1; ctx.strokeStyle='#1d2b44';
+  for(let i=1;i<v.lanes;i++){ctx.beginPath();ctx.moveTo(x0+i*laneW,0);ctx.lineTo(x0+i*laneW,H);ctx.stroke();}
+  ctx.setLineDash([]);
+  const carY=H-70, yFor=d=>carY-(d/v.horizon)*(H-110);
+  for(const o of v.obstacles){
+    const oy=yFor(o.distance), ox=x0+o.lane*laneW+laneW/2;
+    if(oy<-40||oy>H+40) continue;
+    const w=laneW*.6,h=26;
+    ctx.fillStyle='#3a1e2a'; ctx.fillRect(ox-w/2,oy-h/2,w,h);
+    ctx.strokeStyle='#ff667a88'; ctx.strokeRect(ox-w/2+.5,oy-h/2+.5,w-1,h-1);
+  }
+  const cx=x0+v.lane*laneW+laneW/2;
+  ctx.fillStyle=v.crashed?'#ff667a':'#55e6a5'; ctx.fillRect(cx-13,carY-20,26,40);
+  ctx.fillStyle='#06100c'; ctx.font='bold 13px ui-monospace';
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(v.crashed?'✕':'▲',cx,carY);
+  if(v.curve&&!v.crashed){
+    ctx.fillStyle='#ffc857'; ctx.font='bold 15px ui-monospace';
+    ctx.fillText(v.curve.direction==='left'?'⟵ curva':'curva ⟶',W/2,26);
+  }
+
+  /* bateu: pista ja vem vazia do servidor, aqui so avisa o que aconteceu */
+  if(v.crashed){
+    ctx.fillStyle='rgba(255,102,122,.10)'; ctx.fillRect(x0,0,roadW,H);
+    ctx.fillStyle='#ff667a'; ctx.font='bold 26px ui-monospace';
+    ctx.fillText('BATEU',W/2,H/2-14);
+    ctx.fillStyle='#8aa0c0'; ctx.font='12px ui-monospace';
+    ctx.fillText(v.step_mode?'mande uma ação para recomeçar'
+                            :'pista limpa — recomeçando',W/2,H/2+12);
+  }else if(v.step_mode){
+    ctx.fillStyle='#ffc857'; ctx.font='11px ui-monospace';
+    ctx.fillText('passo a passo — o mundo anda a cada ação',W/2,H-34);
+  }
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  ctx.fillStyle='#5b6c88'; ctx.font='11px ui-monospace';
+  ctx.fillText(`faixas livres: ${v.lanes_free.join(', ')||'nenhuma'}`,12,H-14);
+}
+
+/* O rosto e a unica leitura do humor do cliente: nenhum numero na tela.
+   Todos os tracos escalam com o raio, entao da para crescer a vontade. */
+function drawFace(cx,cy,r,f){
+  const cor=moodColor(f), t=f==null?0:Math.max(0,Math.min(2,f))/2, k=r/50;
+
+  /* vapor saindo da cabeca quando passa de civilizado */
+  if(f!=null&&f>1.35){
+    const forca=(f-1.35)/0.65;
+    ctx.fillStyle=rgb([255,102,122],0.20+0.28*forca);
+    for(let i=0;i<3;i++){
+      const px=cx+(i-1)*30*k;
+      const py=cy-r-12*k-((performance.now()/240+i*30)%(26*k));
+      ctx.beginPath(); ctx.arc(px,py,(6+i%2*3)*k,0,Math.PI*2); ctx.fill();
+    }
+  }
+
+  ctx.fillStyle=rgb(cor,0.18); ctx.strokeStyle=rgb(cor); ctx.lineWidth=3*k;
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill(); ctx.stroke();
+
+  if(f==null){
+    ctx.fillStyle=rgb(cor); ctx.font=`bold ${Math.round(40*k)}px ui-monospace`;
+    ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('?',cx,cy+2);
+    ctx.textBaseline='alphabetic';
+    return;
+  }
+
+  const olhoY=cy-8*k, dx=20*k;
+  /* sobrancelhas fecham para dentro conforme a raiva sobe */
+  ctx.strokeStyle=rgb(cor); ctx.lineWidth=3.5*k; ctx.lineCap='round';
+  for(const lado of [-1,1]){
+    const xOut=cx+lado*dx-lado*11*k, xIn=cx+lado*dx+lado*11*k;
+    ctx.beginPath();
+    ctx.moveTo(xOut,olhoY-17*k-t*3*k);
+    ctx.lineTo(xIn,olhoY-17*k+t*13*k);
+    ctx.stroke();
+  }
+  ctx.fillStyle=rgb(cor);
+  for(const lado of [-1,1]){
+    ctx.beginPath();
+    ctx.ellipse(cx+lado*dx,olhoY,4*k,(4+(1-t)*1.5)*k,0,0,Math.PI*2);
+    ctx.fill();
+  }
+  /* boca: sorriso -> reta -> berro aberto */
+  const bocaY=cy+22*k;
+  if(t>0.72){
+    const abertura=(6+(t-0.72)*46)*k;
+    ctx.beginPath(); ctx.ellipse(cx,bocaY+4*k,17*k,abertura,0,0,Math.PI*2); ctx.fill();
+  }else{
+    ctx.lineWidth=3.5*k;
+    ctx.beginPath(); ctx.moveTo(cx-19*k,bocaY);
+    ctx.quadraticCurveTo(cx,bocaY+(0.5-t)*40*k,cx+19*k,bocaY);
+    ctx.stroke();
+  }
+  ctx.lineCap='butt';
+}
+
+/* Suporte: o rosto e a reclamacao, mais nada. Sem barra de urgencia, sem
+   escala de frustracao, sem veredito — a leitura fica com quem assiste. */
+function drawSupport(v,W,H){
+  clearBoard(W,H);
+  const f=v.frustracao, cor=moodColor(f), t=v.ticket;
+  const meio=H/2;
+
+  drawFace(118,meio,78,f);
+
+  const bx=232, bw=W-bx-22;
+  ctx.font='14px ui-monospace';
+  const linhas=wrapText(t.mensagem,bw-32).slice(0,11);
+  const bh=Math.min(H-44,58+linhas.length*21);
+  const by=Math.round((H-bh)/2);
+
+  ctx.fillStyle='#0d1726'; ctx.strokeStyle=rgb(cor,.6); ctx.lineWidth=1.5;
+  roundRect(bx,by,bw,bh,12); ctx.fill(); ctx.stroke();
+
+  /* rabinho apontando para o rosto */
+  ctx.beginPath();
+  ctx.moveTo(bx,meio-12); ctx.lineTo(bx-16,meio); ctx.lineTo(bx,meio+12);
+  ctx.closePath(); ctx.fillStyle='#0d1726'; ctx.fill();
+  ctx.strokeStyle=rgb(cor,.6); ctx.stroke();
+  /* apaga a borda do balao onde o rabinho encosta */
+  ctx.beginPath(); ctx.moveTo(bx,meio-11); ctx.lineTo(bx,meio+11);
+  ctx.strokeStyle='#0d1726'; ctx.lineWidth=3; ctx.stroke();
+
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  ctx.fillStyle=rgb(cor,.9); ctx.font='bold 12px ui-monospace';
+  ctx.fillText(t.cliente,bx+17,by+27);
+  ctx.fillStyle='#dce6f5'; ctx.font='14px ui-monospace';
+  linhas.forEach((linha,i)=>ctx.fillText(linha,bx+17,by+53+i*21));
+}
+
+const PAINTERS={vitamin_hunt:drawVitamin,race:drawRace,support:drawSupport};
+
+function paint(){
+  if(!snap) return;
+  const W=$('#board').width, H=$('#board').height;
+  if(editando&&rascunhoMapa){
+    /* desenha o rascunho, não o tabuleiro que o servidor está rodando */
+    drawVitamin({cols:rascunhoMapa.cols,rows:rascunhoMapa.rows,
+                 player:rascunhoMapa.start,vitamin:rascunhoMapa.start,
+                 barriers:rascunhoMapa.walls,map:rascunhoMapa},W,H);
+    return;
+  }
+  /* snap.game é o id do jogo, uma string — o frame não traz objeto aqui */
+  const painter=PAINTERS[snap.game];
+  if(!painter){ clearBoard(W,H); return; }
+  try{
+    painter(snap.view,W,H);
+  }catch(err){
+    clearBoard(W,H);
+    ctx.fillStyle='#ff667a'; ctx.font='12px ui-monospace'; ctx.textAlign='left';
+    ctx.fillText(`erro ao desenhar "${snap.game}": ${err.message}`,16,24);
+  }
+}
+
+/* ---------------- sincronia com o servidor ----------------
+   A pagina so observa (/api/view nunca avanca a fila) e, quando voce clica
+   num botao, vira cliente como qualquer outro (POST /api/action).        */
+
+const ME = 'navegador';
+
+function renderActions(){
+  const host=$('#actionBtns');
+  if(!snap) return;
+  const ids=snap.actions.map(a=>a.id).join(',');
+  if(host.dataset.ids===ids) return;
+  host.dataset.ids=ids;
+  host.innerHTML=snap.actions.map(a=>
+    `<button data-action="${a.id}">${a.label}</button>`).join('');
+  host.querySelectorAll('button').forEach(b=>
+    b.addEventListener('click',()=>sendAction(b.dataset.action)));
+}
+
+function renderClients(){
+  const host=$('#clients');
+  const list=snap.clients||[];
+  host.innerHTML=list.length
+    ? list.map(c=>`<div class="client${c.name===ME?' me':''}">
+        <b>${c.name}</b>
+        <span class="muted">${c.frames} frames · ${c.actions} ações</span>
+        <span class="muted">há ${c.seconds_since_last}s</span>
+      </div>`).join('')
+    : '<p class="muted">Ninguém pediu frame ainda.</p>';
+}
+
+function renderHistory(){
+  const host=$('#history');
+  const list=snap.history||[];
+  host.innerHTML=list.length
+    ? list.slice(0,12).map(h=>{
+        const sigs=Object.values(h.signals||{}).map(g=>{
+          const v=Number(g.value);
+          const shown=g.type==='score'?`${v.toFixed(2)}${g.label?' · '+g.label:''}`
+                     :(g.type==='noul'?v.toFixed(2):g.value);
+          return `<span class="sig"><b>${g.label_text||g.id}</b> ${shown}</span>`;
+        }).join('');
+        return `<div class="act">
+            <span class="n">#${h.frame}</span>
+            <span class="a">${h.action}</span>
+            ${h.stale?'<span class="stale">frame velho</span>':''}
+            <span class="who">${h.by}</span>
+          </div>${sigs?`<div class="sigRow" style="margin:0 0 6px 36px">${sigs}</div>`:''}`;
+      }).join('')
+    : '<p class="muted">Nenhuma ainda.</p>';
+}
+
+function applySnap(data){
+  snap=data;
+  if($('#gameSel').options.length!==data.games.length){
+    $('#gameSel').innerHTML=data.games.map(g=>`<option value="${g.id}">${g.name}</option>`).join('');
+  }
+  $('#gameSel').value=data.game;
+  $('#gameName').textContent=`— ações: ${data.actions.map(a=>a.id).join(', ')}`;
+  $('#frameNo').textContent=data.frame;
+  $('#pause').textContent=data.paused?'▶ Descongelar':'⏸ Congelar';
+  $('#pause').classList.toggle('on',data.paused);
+  /* só faz sentido em jogo com movimento próprio; nos de turno o mundo já
+     espera o cliente por natureza */
+  $('#passoModo').hidden=!data.stepable;
+  $('#passoModo').textContent=data.step_mode?'⏩ Voltar ao contínuo':'🎬 Passo a passo';
+  $('#passoModo').classList.toggle('on',data.step_mode);
+  $('#stats').innerHTML=data.stats.map(s=>
+    `<span class="stat ${s.tone||''}">${s.label} <b>${s.value}</b></span>`).join('');
+  /* mapa só existe no Vitamina */
+  const temMapa=data.game==='vitamin_hunt';
+  $('#mapaCampo').hidden=!temMapa;
+  $('#editarMapa').hidden=!temMapa;
+  if(temMapa){
+    const mapas=data.maps||[];
+    const chaves=mapas.map(m=>m.id).join(',');
+    if($('#mapSel').dataset.chaves!==chaves){
+      $('#mapSel').dataset.chaves=chaves;
+      $('#mapSel').innerHTML='<option value="">aleatório</option>'+
+        mapas.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
+    }
+    if(!editando) $('#mapSel').value=data.map_id||'';
+  }else if(editando){ sairEditor(); }
+  renderActions(); renderClients(); renderHistory(); paint();
+}
+
+async function poll(){
+  try{ applySnap(await (await fetch('/api/view',{cache:'no-store'})).json()); }
+  catch(e){ /* servidor reiniciando; a proxima volta tenta de novo */ }
+}
+
+async function control(cmd,value){
+  try{ applySnap(await (await fetch('/api/control',{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({cmd,value})})).json()); }
+  catch(e){}
+}
+
+async function sendAction(action){
+  try{
+    await fetch('/api/action',{method:'POST',
+      headers:{'Content-Type':'application/json','X-Client':ME},
+      body:JSON.stringify({action,by:ME,frame:snap?.frame})});
+    poll();
+  }catch(e){}
+}
+
+/* =====================================================================
+   Editor de mapa
+   O rascunho vive aqui na página; só vai para o servidor ao salvar.
+   ===================================================================== */
+
+let editando=false, rascunhoMapa=null, ferramenta='parede', pintando=false;
+
+function novoRascunho(base){
+  const v=snap?.view||{cols:12,rows:10};
+  return base?JSON.parse(JSON.stringify(base)):{
+    id:'mapa_'+Date.now().toString(36),
+    name:'', cols:v.cols, rows:v.rows,
+    start:[0,0], walls:[], spawns:[],
+  };
+}
+
+function entrarEditor(){
+  const v=snap.view;
+  /* começa do mapa ativo, ou do tabuleiro que está na tela */
+  rascunhoMapa=v.map
+    ? {id:v.map.id,name:v.map.name,cols:v.cols,rows:v.rows,
+       start:[...v.map.start],walls:v.barriers.map(b=>[...b]),
+       spawns:v.map.spawns.map(sp=>[...sp])}
+    : {...novoRascunho(),cols:v.cols,rows:v.rows,
+       start:[...v.player],walls:v.barriers.map(b=>[...b]),spawns:[[...v.vitamin]]};
+  editando=true;
+  sincronizarEditor();
+}
+
+function sairEditor(){
+  editando=false; rascunhoMapa=null;
+  sincronizarEditor(); poll();
+}
+
+function sincronizarEditor(){
+  $('#painelMapa').hidden=!editando;
+  $('#painelAcoes').hidden=editando;
+  $('#board').classList.toggle('editando',editando);
+  $('#editarMapa').classList.toggle('on',editando);
+  if(editando&&rascunhoMapa){
+    $('#mapNome').value=rascunhoMapa.name||'';
+    $('#mapCols').value=rascunhoMapa.cols;
+    $('#mapRows').value=rascunhoMapa.rows;
+    avisoMapa();
+  }
+  paint();
+}
+
+function avisoMapa(msg){
+  if(msg){ $('#mapAviso').textContent=msg; return; }
+  const m=rascunhoMapa;
+  const spawns=m.spawns.length;
+  $('#mapAviso').textContent=
+    `${m.cols}×${m.rows} · ${m.walls.length} parede(s) · `+
+    (spawns?`${spawns} ponto(s) de spawn, usados em ordem`
+           :'nenhum spawn definido: a vitamina cai em célula livre qualquer');
+}
+
+/* qual célula está debaixo do mouse */
+function celulaDoEvento(ev){
+  const board=$('#board'), r=board.getBoundingClientRect();
+  const W=board.width, H=board.height;
+  const x=(ev.clientX-r.left)*(W/r.width);
+  const y=(ev.clientY-r.top)*(H/r.height);
+  const g=vitaminGeom(rascunhoMapa,W,H);
+  const cx=Math.floor((x-g.x0)/g.cell), cy=Math.floor((y-g.y0)/g.cell);
+  if(cx<0||cy<0||cx>=rascunhoMapa.cols||cy>=rascunhoMapa.rows) return null;
+  return [cx,cy];
+}
+
+const mesma=(a,b)=>a[0]===b[0]&&a[1]===b[1];
+const tira=(lista,c)=>{ const i=lista.findIndex(x=>mesma(x,c)); if(i>=0) lista.splice(i,1); return i>=0; };
+
+function pintarCelula(c){
+  const m=rascunhoMapa;
+  if(ferramenta==='parede'){
+    if(mesma(m.start,c)) return avisoMapa('A origem do player não pode virar parede.');
+    tira(m.spawns,c);
+    if(!tira(m.walls,c)) m.walls.push(c);   /* clicar de novo remove */
+  }else if(ferramenta==='spawn'){
+    if(mesma(m.start,c)) return avisoMapa('A origem já é onde o player nasce.');
+    tira(m.walls,c);
+    if(!tira(m.spawns,c)) m.spawns.push(c);
+  }else if(ferramenta==='origem'){
+    tira(m.walls,c); tira(m.spawns,c);
+    m.start=c;
+  }else{
+    tira(m.walls,c); tira(m.spawns,c);
+  }
+  avisoMapa(); paint();
+}
+
+$('#board').addEventListener('pointerdown',ev=>{
+  if(!editando) return;
+  const c=celulaDoEvento(ev);
+  if(!c) return;
+  pintando=true; $('#board').setPointerCapture(ev.pointerId);
+  pintarCelula(c); ev.preventDefault();
+});
+$('#board').addEventListener('pointermove',ev=>{
+  if(!editando||!pintando) return;
+  const c=celulaDoEvento(ev);
+  /* arrastando só pinta parede e apagar: origem é uma célula só */
+  if(c&&(ferramenta==='parede'||ferramenta==='apagar')) pintarCelula(c);
+});
+addEventListener('pointerup',()=>pintando=false);
+
+$('#ferramentas').addEventListener('click',ev=>{
+  const btn=ev.target.closest('button[data-tool]');
+  if(!btn) return;
+  ferramenta=btn.dataset.tool;
+  $('#ferramentas').querySelectorAll('button').forEach(b=>
+    b.classList.toggle('on',b===btn));
+});
+
+for(const campo of ['#mapCols','#mapRows']){
+  $(campo).addEventListener('change',e=>{
+    const n=Math.max(4,Math.min(24,Number(e.target.value)||10));
+    e.target.value=n;
+    rascunhoMapa[campo==='#mapCols'?'cols':'rows']=n;
+    /* o que ficou fora do novo tamanho sai */
+    const dentro=c=>c[0]<rascunhoMapa.cols&&c[1]<rascunhoMapa.rows;
+    rascunhoMapa.walls=rascunhoMapa.walls.filter(dentro);
+    rascunhoMapa.spawns=rascunhoMapa.spawns.filter(dentro);
+    if(!dentro(rascunhoMapa.start)) rascunhoMapa.start=[0,0];
+    avisoMapa(); paint();
+  });
+}
+$('#mapNome').addEventListener('input',e=>{ rascunhoMapa.name=e.target.value; });
+
+$('#novoMapa').addEventListener('click',()=>{ rascunhoMapa=novoRascunho(); sincronizarEditor(); });
+$('#limparMapa').addEventListener('click',()=>{ rascunhoMapa.walls=[]; avisoMapa(); paint(); });
+
+$('#salvarMapa').addEventListener('click',async()=>{
+  if(!rascunhoMapa.name.trim()){ avisoMapa('Dê um nome ao mapa antes de salvar.');
+                                 $('#mapNome').focus(); return; }
+  try{
+    const r=await (await fetch('/api/maps',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(rascunhoMapa)})).json();
+    if(!r.ok){ avisoMapa('⚠ '+(r.error||'falhou')); return; }
+    editando=false; rascunhoMapa=null;
+    applySnap(r); sincronizarEditor();
+    $('#conn').textContent=`mapa "${r.map.name}" salvo e carregado`;
+  }catch(e){ avisoMapa('⚠ '+e); }
+});
+
+$('#excluirMapa').addEventListener('click',async()=>{
+  const alvo=rascunhoMapa?.id;
+  if(!alvo) return;
+  try{
+    applySnap(await (await fetch('/api/maps/delete',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({id:alvo})})).json());
+    editando=false; rascunhoMapa=null; sincronizarEditor();
+    $('#conn').textContent='mapa excluído';
+  }catch(e){ avisoMapa('⚠ '+e); }
+});
+
+$('#sairEditor').addEventListener('click',sairEditor);
+$('#editarMapa').addEventListener('click',()=>editando?sairEditor():entrarEditor());
+$('#mapSel').addEventListener('change',e=>control('map',e.target.value));
+
+$('#gameSel').addEventListener('change',e=>control('game',e.target.value));
+$('#reset').addEventListener('click',()=>control('reset'));
+$('#pause').addEventListener('click',()=>control('pause',!snap?.paused));
+$('#passoModo').addEventListener('click',()=>control('step_mode',!snap?.step_mode));
+addEventListener('keydown',e=>{
+  if(!snap||e.target.tagName==='SELECT') return;
+  const map={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'};
+  const wanted=map[e.code];
+  if(wanted&&snap.actions.some(a=>a.id===wanted)){ e.preventDefault(); sendAction(wanted); }
+});
+
+poll();
+setInterval(poll,400);
+requestAnimationFrame(function spin(){ paint(); requestAnimationFrame(spin); });
+</script>
+</body>
+</html>

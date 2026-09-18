@@ -1,0 +1,2329 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jev Framework</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230d1726'/><path d='M10.5 9.5 L20 15.2 M10.5 22.5 L20 16.8' stroke='%233d4f70' stroke-width='2' stroke-linecap='round' fill='none'/><circle cx='8' cy='9' r='3.2' fill='%23b585ff'/><circle cx='8' cy='23' r='3.2' fill='%235aa9ff'/><circle cx='23.5' cy='16' r='4.2' fill='%2355e6a5'/></svg>">
+<style>
+  :root{
+    --bg:#08101d; --panel:#0d1726; --panel2:#111f33; --line:#26344e;
+    --text:#dce6f5; --dim:#8296b4; --faint:#5b6c88;
+    --green:#55e6a5; --yellow:#ffc857; --red:#ff667a; --blue:#5aa9ff; --violet:#b585ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:14px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}
+  button,select,input,textarea{font:inherit;color:inherit}
+  button{background:var(--panel2);border:1px solid var(--line);border-radius:7px;
+         padding:7px 13px;cursor:pointer}
+  button:hover:not(:disabled){border-color:var(--green);color:var(--green)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  button.danger:hover{border-color:var(--red);color:var(--red)}
+  select,input,textarea{background:#0a1422;border:1px solid var(--line);
+                        border-radius:6px;padding:6px 8px;width:100%}
+  textarea{resize:vertical;line-height:1.5}
+  h1{font-size:16px;margin:0;letter-spacing:.5px}
+  h2{font-size:12px;margin:0 0 10px;color:var(--dim);text-transform:uppercase;letter-spacing:1.2px}
+
+  header{display:flex;align-items:center;gap:13px;flex-wrap:wrap;
+         padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+  header .sep{width:1px;height:24px;background:var(--line)}
+  header label{color:var(--dim);font-size:12px;display:flex;align-items:center;gap:6px}
+  header select,header input{width:auto;min-width:170px}
+  .spacer{flex:1}
+  .muted{color:var(--faint);font-size:12px}
+  .tag{font-size:10px;padding:2px 7px;border-radius:99px;border:1px solid var(--line);color:var(--dim)}
+
+  .layout{display:grid;grid-template-columns:1fr minmax(330px,31%);gap:1px;
+          background:var(--line);height:calc(100vh - 53px);
+          transition:grid-template-columns .16s ease}
+  /* encolhido, o monitor vira uma tira e o funil fica com a tela toda */
+  .layout.encolhida{grid-template-columns:1fr 46px}
+  .lateral{position:relative}
+  .lateralBtn{position:absolute;top:9px;right:9px;z-index:3;padding:3px 8px;
+              font-size:12px;line-height:1.1}
+  .lateralCorpo{display:flex;flex-direction:column;min-height:0;flex:1}
+  .layout.encolhida .lateralCorpo{display:none}
+  .lateralTira{display:none}
+  .layout.encolhida .lateralTira{display:flex;flex-direction:column;align-items:center;
+                                 gap:12px;padding:44px 0 12px}
+  .tiraLabel{writing-mode:vertical-rl;text-orientation:mixed;color:var(--dim);
+             font-size:11px;letter-spacing:2px;text-transform:uppercase}
+  .tiraCount{font-size:10px;color:var(--violet);writing-mode:vertical-rl}
+  .col{background:var(--bg);display:flex;flex-direction:column;min-width:0;min-height:0}
+  .pane{padding:12px 14px;border-bottom:1px solid var(--line)}
+  .pane.grow{flex:1;min-height:0;display:flex;flex-direction:column}
+
+  /* ---- conexões ---- */
+  .link{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;
+        border:1px solid var(--line);background:#0a1422;font-size:12px;margin-bottom:8px}
+  .led{width:9px;height:9px;border-radius:50%;background:var(--faint);flex:none}
+  .led.ok{background:var(--green);box-shadow:0 0 8px var(--green)}
+  .led.bad{background:var(--red);box-shadow:0 0 8px var(--red)}
+  .probeRow{display:flex;gap:7px;margin-bottom:8px}
+  .probeRow input{flex:1}
+  .peer{border:1px solid var(--line);border-radius:7px;padding:8px 10px;margin-bottom:7px;
+        background:#0a1422;font-size:12px}
+  .peer b{color:var(--green)}
+  .peer .acts{color:var(--faint);font-size:10.5px;margin-top:3px;display:block}
+
+  .driveRow{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+  .comQual{font-size:11px;color:var(--faint)}
+  .comQual b{color:var(--violet)}
+  .sujoAviso{margin-top:8px;font-size:11px;color:var(--yellow);
+             border:1px solid #6b5a2b;background:#2a2412;border-radius:6px;padding:7px 9px}
+  .sujoAviso button{padding:3px 9px;font-size:11px;margin-left:6px}
+  code{background:#0a1422;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:11px}
+  .staleTag{color:var(--yellow);font-size:10px;border:1px solid #6b5a2b;
+            border-radius:99px;padding:1px 6px}
+
+  /* ---- feed ---- */
+  .feedHead{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+  button.small{padding:4px 9px;font-size:11px}
+  #feed{overflow:auto;flex:1;min-height:0}
+  .dec{border:1px solid var(--line);border-radius:8px;padding:9px 11px;margin-bottom:8px;
+       background:var(--panel);animation:pop .25s ease}
+  @keyframes pop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .dec.err{border-color:#6b2b38}
+  /* leitura de debug: azul, para nao se confundir com decisao do Jev */
+  .dec.inputs{border-color:#2d4668;background:#0e1725}
+  .dec.inputs .decAction{color:var(--blue);font-weight:600;font-size:11.5px}
+  .inMeta{font-size:11px;color:var(--dim);margin-bottom:7px}
+  .inAviso{color:var(--yellow)}
+  .inCampos{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:11.5px}
+  .inPath{color:var(--blue);white-space:nowrap;font-family:ui-monospace,monospace}
+  .inVal{color:var(--txt);word-break:break-word}
+  .inVal.vazio{color:var(--dim)}
+  .inGrupo{grid-column:1/-1;color:var(--dim);font-size:10.5px;margin-top:5px;
+           border-top:1px dashed var(--line);padding-top:4px}
+  .inCru{margin-top:8px}
+  .inCru summary{cursor:pointer;color:var(--dim);font-size:11px}
+  .inCru pre{margin:6px 0 0;max-height:240px;overflow:auto;background:#0a111c;
+             border:1px solid var(--line);border-radius:6px;padding:8px;
+             font-size:11px;line-height:1.45;white-space:pre}
+  .decHead{display:flex;align-items:center;gap:8px;font-size:11.5px;margin-bottom:6px}
+  .decAgent{color:var(--blue)}
+  .decAction{color:var(--green);font-weight:700;font-size:13px}
+  .hop{width:18px;height:18px;flex:none;border-radius:50%;background:var(--panel2);
+       border:1px solid var(--line);display:grid;place-items:center;font-size:10px;color:var(--dim)}
+  .traceStep{display:flex;align-items:center;gap:7px;padding:4px 0}
+  .traceBody{flex:1;min-width:0}
+  .traceLabel{font-size:11px;color:var(--dim);display:block}
+  .traceChoice{color:var(--violet);font-size:12px}
+  .guarded .traceChoice{color:var(--yellow)}
+  .guardNote{display:block;font-size:10px;color:var(--yellow);opacity:.85;margin-top:2px}
+  .conf{font-size:10px;padding:1px 6px;border-radius:99px;border:1px solid;white-space:nowrap}
+  .conf.hi{color:var(--green);border-color:#2b6b52;background:#12291f}
+  .conf.mid{color:var(--yellow);border-color:#6b5a2b;background:#2a2412}
+  .conf.lo{color:var(--red);border-color:#6b2b38;background:#2a1219}
+  .sigRow{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+  .sig{font-size:10px;padding:1px 6px;border-radius:5px;background:#12203a;
+       border:1px solid var(--line);color:var(--dim)}
+  .sig b{color:var(--text)}
+  .err{color:var(--red);font-size:11.5px;white-space:pre-wrap}
+
+  /* ---- grafo ---- */
+  .graphWrap{flex:1;min-height:0;position:relative;overflow:auto;background:
+    radial-gradient(circle at 1px 1px,#16253c 1px,transparent 0) 0 0/26px 26px,var(--bg)}
+  #graphInner{position:relative;min-width:100%;min-height:100%}
+  #wires{position:absolute;inset:0;pointer-events:none;overflow:visible}
+  .fio{pointer-events:auto}
+  .fioPegador{fill:none;stroke:transparent;stroke-width:16;cursor:pointer}
+  .apagar{opacity:0;pointer-events:none;transition:opacity .12s}
+  .fio:hover .apagar{opacity:1;pointer-events:auto;cursor:pointer}
+  .apagar circle{fill:#2a1219;stroke:var(--red);stroke-width:1.5}
+  .apagar text{fill:var(--red);font:10px ui-monospace;pointer-events:none}
+  .apagar:hover circle{fill:var(--red)}
+  .apagar:hover text{fill:#0d1726}
+  .wire{fill:none;stroke:var(--line);stroke-width:2}
+  .wire.lit{stroke:var(--violet);stroke-width:3}
+  /* quando há probabilidade, stroke e largura vêm inline e vencem estas regras */
+  .wireLabel{font:10px ui-monospace;fill:var(--violet);paint-order:stroke}
+  .node{position:absolute;width:252px;background:var(--panel);border:1px solid var(--line);
+        border-radius:9px;overflow:hidden;box-shadow:0 6px 18px #0006}
+  .node.entry{border-color:var(--blue)}
+  .node.lit{border-color:var(--violet);box-shadow:0 0 0 2px #b585ff33,0 6px 22px #0008}
+  .node.sel{outline:2px solid var(--green);outline-offset:1px}
+  .nodeHead{padding:8px 10px;background:var(--panel2);cursor:grab;
+            display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--line)}
+  .nodeHead:active{cursor:grabbing}
+  .nodeTitle{flex:1;font-size:12.5px;font-weight:600;white-space:nowrap;
+             overflow:hidden;text-overflow:ellipsis}
+  .badge{font-size:9px;padding:2px 6px;border-radius:99px;border:1px solid var(--blue);color:var(--blue)}
+  .shield{font-size:9px;padding:2px 6px;border-radius:99px;border:1px solid var(--yellow);color:var(--yellow)}
+  .opt{display:flex;align-items:center;gap:7px;padding:6px 10px;font-size:11.5px;
+       border-top:1px dashed #1c2a42;cursor:grab;touch-action:none}
+  .opt:hover{background:#16233a}
+  .opt.puxando{cursor:grabbing;background:#12291f}
+  .opt.puxando .porta{border-color:var(--green);background:var(--green)}
+  .opt.lit{background:#1d1630}
+  .optName{flex:1;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .opt.lit .optName{color:var(--violet)}
+  .optTo{font-size:10px;color:var(--faint);white-space:nowrap}
+  .optTo.emit{color:var(--green)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--line);flex:none}
+  .opt.lit .dot{background:var(--violet)}
+  .opt.solta{background:#1d1520}
+  .optTo.solta{color:var(--red);font-style:italic}
+  .porta{width:11px;height:11px;border-radius:50%;flex:none;cursor:grab;
+         background:var(--panel);border:2px solid var(--line);margin-right:-15px;
+         box-shadow:0 0 0 3px var(--panel)}
+  .porta:hover{border-color:var(--green);background:#12291f}
+  .opt.solta .porta{border-color:var(--red)}
+  .porta.puxando{cursor:grabbing;border-color:var(--green);background:var(--green)}
+  .node.alvoLigacao{outline:2px dashed var(--green);outline-offset:2px}
+  .pill.alvoLigacao{outline:2px dashed var(--green);outline-offset:3px}
+  .opt.alvoLigacao{outline:2px dashed var(--green);outline-offset:-2px;background:#12291f}
+  /* quantas decisoes diferentes chegam neste destino */
+  .chegadas{position:absolute;left:-9px;top:50%;transform:translateY(-50%);
+            min-width:17px;height:17px;border-radius:99px;background:var(--panel2);
+            border:1px solid var(--green);color:var(--green);font-size:10px;
+            display:grid;place-items:center;padding:0 3px;pointer-events:none}
+  .node .chegadas{top:18px}
+  .wire.temporario{stroke:var(--green);stroke-width:2.5;stroke-dasharray:6 5}
+  .wire.solta{stroke:#5a2740;stroke-width:2;stroke-dasharray:4 4}
+  .nodeSignals{padding:5px 10px;border-top:1px dashed #1c2a42;display:flex;
+               flex-wrap:wrap;gap:4px;background:#0a1626}
+  .nodeSignals .tag{border-color:#2f5580;color:#6d8fc0}
+  .pill{position:absolute;padding:8px 14px;border-radius:99px;background:#102a20;
+       cursor:grab;touch-action:none;
+        border:1px solid #2b6b52;color:var(--green);font-size:12.5px;font-weight:600;
+        white-space:nowrap;box-shadow:0 4px 12px #0005}
+  .pill.lit{background:#1a4a36;box-shadow:0 0 0 3px #55e6a533,0 4px 14px #0007}
+
+  .newFunnelBox{background:#0a1626}
+  .nfRow{display:flex;gap:10px;flex-wrap:wrap}
+  .nfRow label{flex:1;min-width:190px;font-size:11px;color:var(--dim)}
+  .nfRow input{margin-top:4px}
+  .nfBtns{display:flex;gap:8px;align-items:center;margin-top:10px}
+  button.ok{border-color:#2b6b52;color:var(--green);background:#12291f}
+  button.ok:hover{background:#1a4a36}
+
+  .contractPane{background:#0a1626;max-height:34%;overflow:auto}
+  .contractPane h3{font-size:10px;margin:0 0 6px;color:var(--faint);
+                   text-transform:uppercase;letter-spacing:1px}
+  .contractCols{display:grid;grid-template-columns:minmax(150px,26%) 1fr;gap:14px}
+  @media(max-width:860px){.contractCols{grid-template-columns:1fr}}
+  .chips{display:flex;flex-wrap:wrap;gap:5px}
+  .chip{font-size:11px;padding:3px 9px;border-radius:99px;background:#102a20;
+        border:1px solid #2b6b52;color:var(--green);white-space:nowrap}
+  .chip small{color:var(--faint);margin-left:5px}
+  .chip[data-action]{cursor:grab;touch-action:none}
+  .chip[data-action]:hover{border-color:var(--green)}
+  .chip.puxando{cursor:grabbing;background:var(--green);color:#06100c}
+  /* etiqueta que acompanha o cursor enquanto se arrasta uma acao */
+  .fantasmaAcao{position:fixed;z-index:99;pointer-events:none;
+                transform:translate(12px,12px);font-size:11px;padding:4px 10px;
+                border-radius:99px;background:var(--green);color:#06100c;
+                font-weight:700;box-shadow:0 4px 14px #0008}
+  .fieldList{display:flex;flex-direction:column;gap:2px;max-height:150px;overflow:auto}
+  .fld{display:flex;align-items:baseline;gap:8px;font-size:11px;padding:2px 5px;
+       border-radius:4px;cursor:pointer;border:1px solid transparent}
+  .fld:hover{background:#12203a;border-color:var(--line)}
+  .fld.container{opacity:.55;cursor:default}
+  .fld.container:hover{background:none;border-color:transparent}
+  .fld .p{color:var(--blue);white-space:nowrap}
+  .fld .t{color:var(--faint);font-size:10px;white-space:nowrap}
+  .fld .v{color:var(--dim);flex:1;min-width:0;overflow:hidden;
+          text-overflow:ellipsis;white-space:nowrap}
+
+  .ntype{font-size:9px;padding:2px 6px;border-radius:99px;letter-spacing:.5px}
+  .ntype.choice{border:1px solid var(--violet);color:var(--violet)}
+  .ntype.noul{border:1px solid var(--blue);color:var(--blue)}
+  .ntype.score{border:1px solid var(--yellow);color:var(--yellow)}
+  .lvlRow{display:flex;gap:7px;align-items:center;margin-bottom:6px}
+  .lvlRow .idx{width:20px;flex:none;color:var(--faint);font-size:10px;text-align:right}
+  .lvlRow input{flex:2}
+  .lvlRow select{flex:1.4}
+  .typeNote{font-size:11px;color:var(--faint);margin:0 0 9px;line-height:1.4}
+
+  .node.incompleto{border-color:var(--red);box-shadow:0 0 0 1px #ff667a33,0 6px 18px #0006}
+  .node.incompleto .nodeHead{background:#2a1219}
+  .nodeFalta{padding:5px 10px;background:#2a1219;border-top:1px dashed #6b2b38;
+             color:var(--red);font-size:10px;line-height:1.35}
+  .nodeVazio{padding:9px 10px;color:var(--red);font-size:11px;font-style:italic}
+  .vazioAviso{position:absolute;inset:0;display:grid;place-items:center;
+              pointer-events:none;text-align:center}
+  .vazioAviso div{pointer-events:auto;border:1px dashed var(--line);border-radius:10px;
+                  padding:20px 26px;background:#0d1726cc;max-width:340px}
+  .vazioAviso b{display:block;color:var(--yellow);margin-bottom:6px;font-size:13px}
+  .vazioAviso span{color:var(--faint);font-size:11.5px;line-height:1.5}
+  .rascunho{font-size:10px;padding:2px 8px;border-radius:99px;
+            border:1px solid #6b5a2b;color:var(--yellow);background:#2a2412}
+  .rascunho.pronto{border-color:#2b6b52;color:var(--green);background:#12291f}
+
+  .novaAcao{display:flex;gap:5px;align-items:center;flex:1 1 130px;min-width:0}
+  .novaAcao input{flex:1;min-width:80px}
+  .novaAcao button{flex:none;padding:5px 9px;line-height:1}
+  .dica{font-size:10.5px;color:var(--yellow);margin-top:6px}
+  button.confirmando{background:#2a1219;border-color:var(--red);color:var(--red)}
+
+  .grip{height:8px;flex:none;cursor:ns-resize;background:var(--line);position:relative}
+  .grip::after{content:'';position:absolute;left:50%;top:2.5px;width:46px;height:3px;
+               margin-left:-23px;border-radius:2px;background:#3d4f70}
+  .grip:hover::after,.grip.arrastando::after{background:var(--green)}
+  .feedHead .led{margin:0 2px}
+
+  .sigCard{border:1px solid #2f5580;border-radius:7px;padding:9px;margin-bottom:8px;
+           background:#0a1626}
+  .sigCard.ramifica{border-color:#2b6b52;background:#0b1a16}
+  .qRota{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--dim);
+         margin-top:7px;cursor:pointer}
+  .qRota input{width:auto}
+  .sigCard.ramifica .qRota{color:var(--green)}
+  .sigCard .row{display:flex;gap:7px;align-items:center;margin-bottom:6px}
+  .sigCard .sigId{flex:1;min-width:70px}
+  .sigCard .sigLabel{flex:1.2;min-width:70px}
+  .sigCard textarea{margin-bottom:6px}
+  .sigSub{padding-left:10px;border-left:2px solid #1c2a42;margin-top:4px}
+  .sigAdd{display:flex;gap:7px;align-items:center}
+  .sigAdd select{flex:1}
+  .batchNota{font-size:10.5px;color:var(--green);margin:0 0 8px}
+  .batchNota b{color:var(--text)}
+
+  .qCard{border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:9px;
+         background:#0a1626}
+  .qCard.decide{border-color:#2b6b52;background:#0b1a16}
+  .qTopo{display:flex;gap:7px;align-items:center;margin-bottom:9px}
+  .qTopo .qTipo{width:92px;flex:none;color:var(--violet)}
+  .qTopo .qId{flex:1;font-weight:600;color:var(--blue)}
+  .qTopo .qDel{flex:none;padding:5px 9px}
+  .campo{margin-bottom:9px}
+  .chave{display:block;font-size:10.5px;color:var(--faint);margin-bottom:4px;
+         font-family:ui-monospace,monospace}
+  .chave i{font-style:normal;opacity:.7}
+  .critRow{display:flex;gap:6px;align-items:center;margin-bottom:5px}
+  .critRow .qOptId{flex:1}
+  .critRow .qOptDesc{flex:2.2}
+  .critRow .idx{width:16px;flex:none;color:var(--faint);font-size:10px;text-align:right}
+  .critRow button{flex:none;padding:4px 8px}
+  button.mini{padding:4px 9px;font-size:11px}
+  .semCriteria{font-size:11px;color:var(--faint);margin:0 0 9px}
+  .qDecide{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--dim);
+           cursor:pointer;padding-top:8px;border-top:1px dashed #1c2a42}
+  .qDecide input{width:auto}
+  .qCard.decide .qDecide{color:var(--green)}
+  .qDecide.semRota{border:1px dashed var(--line);border-radius:7px;padding:8px 10px;
+                   margin-top:2px;background:#0a1626}
+  .qDecide.semRota.decide{border-color:#2b6b52;color:var(--green);background:#0b1a16}
+  h3.secao{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;
+           margin:16px 0 9px;display:flex;align-items:center;gap:8px}
+  .batchSelo{font-size:9.5px;padding:2px 7px;border-radius:99px;text-transform:none;
+             letter-spacing:0;border:1px solid #2b6b52;color:var(--green);background:#12291f}
+  .saidaRow{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+  .saidaDe{min-width:96px;font-size:11.5px;color:var(--violet);
+           overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .faixa{font-size:10px;color:var(--faint);white-space:nowrap;
+         border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  .geraria{color:var(--faint);font-size:10px;margin-left:2px}
+  .qCard.decide .geraria{color:var(--green);opacity:.75}
+  .seta{color:var(--faint);flex:none}
+  .saidaRow .outTarget{flex:1}
+  .vazioDica{font-size:11.5px;color:var(--faint);line-height:1.5;margin:0 0 9px;
+             border-left:2px solid var(--line);padding-left:9px}
+  details.avancado{margin-top:12px;border-top:1px solid var(--line);padding-top:9px}
+  details.avancado summary{cursor:pointer;font-size:11px;color:var(--faint);
+                           text-transform:uppercase;letter-spacing:1px}
+  details.avancado summary:hover{color:var(--green)}
+  details.avancado>*{margin-top:9px}
+  .jsonPreview{background:#060c16;border:1px solid var(--line);border-radius:6px;
+               padding:10px;font-size:11px;color:var(--dim);overflow:auto;max-height:230px;
+               white-space:pre;margin:9px 0 0}
+
+  .funilBarra{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .funilAcoes{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .funilAcoes button{padding:5px 11px;font-size:12px}
+  .divisor{width:1px;height:20px;background:var(--line)}
+
+  .qBloco{border-top:1px solid #16233a}
+  .qBloco.rota{background:#0b1a16}
+  .qBlocoCab{display:flex;align-items:center;gap:6px;padding:5px 10px;cursor:pointer;
+             font-size:10.5px;color:var(--dim);user-select:none}
+  .qBlocoCab:hover{background:#12203a}
+  .qNome{flex:1;color:var(--text);font-weight:600;overflow:hidden;
+         text-overflow:ellipsis;white-space:nowrap}
+  .chevron{color:var(--faint);font-size:9px;width:9px;flex:none}
+  .chevron.no{cursor:pointer;font-size:10px}
+  .chevron.no:hover{color:var(--green)}
+  .marcaRota{font-size:8.5px;padding:1px 5px;border-radius:99px;
+             border:1px solid #2b6b52;color:var(--green);letter-spacing:.4px}
+  .opt.leitura{padding-left:22px;opacity:.92}
+  .pct{font-size:9.5px;padding:1px 5px;border-radius:4px;border:1px solid;
+       white-space:nowrap;flex:none}
+  .pct.venceu{font-weight:700}
+  .pct.vazio{color:var(--faint);border-color:var(--line)}
+  .nodeFechado{padding:8px 10px;font-size:10.5px;color:var(--faint);font-style:italic}
+
+  /* ---- inspector ---- */
+  #inspector{background:var(--panel);height:300px;flex:none;
+             overflow:auto;padding:12px 14px}
+  .field{margin-bottom:10px}
+  .field label{display:block;font-size:11px;color:var(--dim);margin-bottom:4px}
+  .optEdit{border:1px solid var(--line);border-radius:7px;padding:9px;margin-bottom:8px;background:#0a1422}
+  .optEdit .row{display:flex;gap:7px;align-items:center;margin-bottom:6px}
+  .optEdit .row input,.optEdit .row select{flex:1}
+  .rowBtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .guardBox{border:1px solid #6b5a2b;border-radius:7px;padding:9px;background:#1c1a10}
+  .warnBox{border:1px solid #6b5a2b;background:#2a2412;color:var(--yellow);
+           border-radius:7px;padding:9px;font-size:11.5px;margin-top:10px}
+  .warnBox ul{margin:5px 0 0;padding-left:17px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🧩 Jev Framework</h1>
+  <span class="tag" id="svcTag">—</span>
+  <span class="muted">não conhece nenhum jogo</span>
+  <div class="sep"></div>
+  <label>funil <select id="funnelSel"></select></label>
+  <div class="spacer"></div>
+  <span id="conn" class="muted">—</span>
+</header>
+
+<div class="layout" id="layout">
+  <div class="col">
+    <div class="pane funilBarra">
+      <h2 style="margin:0">Funil</h2>
+      <span id="funnelMeta" class="muted"></span>
+      <span class="spacer"></span>
+      <div class="funilAcoes">
+        <button id="addNode" class="ok"
+                title="cria um nó vazio; as perguntas entram no editor">＋ nó</button>
+        <span class="divisor"></span>
+        <button id="saveFunnel">💾 Salvar</button>
+        <button id="revertFunnel" class="danger">↺ Restaurar</button>
+        <span class="divisor"></span>
+        <button id="newFunnel">＋ Novo funil</button>
+      </div>
+    </div>
+
+    <div class="pane newFunnelBox" id="newFunnelBox" hidden>
+      <div class="nfRow">
+        <label>nome
+          <input id="nfName" placeholder="ex.: Luta: defender ou atacar" autocomplete="off">
+        </label>
+        <label>agente que vai usar
+          <input id="nfGame" list="nfGames" placeholder="ex.: luta" autocomplete="off">
+          <datalist id="nfGames"></datalist>
+        </label>
+      </div>
+      <div class="nfRow" style="margin-top:9px">
+        <label style="flex:1 1 100%">começar
+          <select id="nfTemplate"></select>
+        </label>
+      </div>
+      <p class="muted" id="nfTemplateDica" style="margin:8px 0 0"></p>
+      <p class="muted" style="margin:6px 0 0">
+        O <b>agente</b> é o id que o jogo manda no frame. O driver em modo
+        <i>auto</i> escolhe o funil casando por esse campo. O painel
+        <b>Contrato do jogo</b> logo abaixo mostra os campos e as ações
+        contra os quais você está desenhando.
+      </p>
+      <div class="nfBtns">
+        <button id="nfCreate" class="ok">Criar</button>
+        <button id="nfCancel">Cancelar</button>
+        <span id="nfHint" class="muted"></span>
+      </div>
+    </div>
+    <div class="pane contractPane">
+      <div class="feedHead">
+        <h2 style="margin:0">Contrato do jogo</h2>
+        <span class="muted" id="contractMeta">—</span>
+        <span class="spacer"></span>
+        <button id="contractReload" class="small">↻ Ler de novo</button>
+        <button id="contractToggle" class="small">ocultar</button>
+      </div>
+      <div id="contractBody">
+        <div class="contractCols">
+          <div>
+            <h3>Saídas — ações que ele aceita</h3>
+            <div id="contractActions" class="chips"><span class="muted">—</span></div>
+          </div>
+          <div>
+            <h3>Entradas — campos do estado</h3>
+            <div id="contractFields" class="fieldList"><span class="muted">—</span></div>
+          </div>
+        </div>
+        <p class="muted" id="contractHint" style="margin:8px 0 0">
+          Arraste uma <b>saída</b> até uma resposta do funil para ligar as duas.
+          Clique num campo de <b>entrada</b> para colá-lo na instrução que estiver editando.
+        </p>
+      </div>
+    </div>
+    <div class="graphWrap" id="graph"><div id="graphInner"><svg id="wires"></svg></div></div>
+    <div class="grip" id="inspectorGrip" title="arraste para mudar a altura da edição"></div>
+    <div id="inspector"><p class="muted">Clique num nó para editar as perguntas e para onde cada resposta leva.</p></div>
+  </div>
+  <div class="col lateral" id="lateral">
+    <button id="lateralToggle" class="lateralBtn" title="encolher o monitor">»</button>
+    <div class="lateralTira" id="lateralTira">
+      <span class="led" id="ledMini" title="estado do Jev"></span>
+      <span class="tiraLabel">monitor</span>
+      <span class="tiraCount" id="tiraCount"></span>
+    </div>
+    <div class="lateralCorpo" id="lateralCorpo">
+      <div class="pane">
+        <div class="feedHead">
+          <h2 style="margin:0">Sistemas conectados</h2>
+          <span class="led" id="led" title="estado do Jev"></span>
+          <span class="muted" id="peersResumo"></span>
+          <span class="spacer"></span>
+        </div>
+        <div id="peersBody">
+          <div class="link">
+            <span class="led" id="ledFull"></span>
+            <span id="jevText">—</span>
+          </div>
+          <div class="probeRow">
+            <input id="peerUrl" value="http://127.0.0.1:8100" placeholder="http://host:porta do jogo">
+            <button id="probe">handshake</button>
+            <button id="lerInputs" title="mostra no log o estado que o jogo está mandando agora">👁 ler inputs</button>
+          </div>
+          <div id="peers"><p class="muted">Nenhum jogo se apresentou ainda.</p></div>
+        </div>
+      </div>
+
+      <div class="pane">
+        <h2>Pilotar <span id="driveTarget" class="muted"></span></h2>
+        <p class="muted" style="margin:0 0 9px">
+          Puxa <code>GET /api/frame</code>, roda o funil, devolve
+          <code>POST /api/action</code>. O jogo só responde.</p>
+        <div class="driveRow">
+          <button id="driveRun">▶ Pilotar</button>
+          <button id="driveStep">→ Um frame</button>
+          <label class="muted">Hz <input id="driveHz" type="number" min="0.2" max="4"
+                 step="0.2" value="1" style="width:66px"></label>
+          <span class="spacer"></span>
+          <span class="comQual" id="driveFunnelNome">—</span>
+        </div>
+        <div id="driveSujo" class="sujoAviso" hidden></div>
+        <div id="driveStatus" class="muted" style="margin-top:8px">parado</div>
+      </div>
+      <div class="pane grow">
+        <div class="feedHead">
+          <h2 style="margin:0">Decisões ao vivo</h2>
+          <span class="muted" id="feedCount"></span>
+          <span class="spacer"></span>
+          <button id="feedClear" class="danger small">🧹 Limpar</button>
+        </div>
+        <div id="feed"><p class="muted">Aguardando decisões… mais recente no topo.</p></div>
+      </div>
+    </div>
+
+    </div>
+  </div>
+
+<script>
+const $ = s => document.querySelector(s);
+const NODE_W = 252;
+
+let funnels={}, funnelId=null, funnel=null;
+let selectedNode=null, lastTrace=null;
+/* A ultima leitura de cada funil. Trocar de funil no dropdown zerava o
+   lastTrace, e como as porcentagens so voltam com uma decisao nova, um funil
+   parado (o suporte, por exemplo) ficava com tudo em "—" para sempre. */
+let ultimaLeitura={};
+let peers=[], lastSeq=0;
+
+/* =====================================================================
+   Vocabulário de ações
+   O framework não tem jogos, então aprende os nomes de ação de duas
+   fontes: o que o funil já emite, e o que os jogos declararam ao chegar.
+   ===================================================================== */
+/* De qual jogo são as ações que este funil pode emitir.
+   Se o funil declara um agente, vale o catálogo daquele agente — mesmo que o
+   jogo carregado no momento seja outro. Sem agente declarado, vale o ativo. */
+function jogoDoFunil(){
+  if(!contract?.ok) return null;
+  const alvo=funnel?.game;
+  if(alvo){
+    const noCatalogo=(contract.games||[]).find(g=>g.id===alvo);
+    if(noCatalogo) return {id:noCatalogo.id,actions:noCatalogo.actions||[]};
+    if(contract.game===alvo) return {id:alvo,actions:contract.actions.map(a=>a.id)};
+    return null;                         /* agente que este jogo não conhece */
+  }
+  return {id:contract.game,actions:(contract.actions||[]).map(a=>a.id)};
+}
+
+function knownActions(){
+  const found=new Set();
+  (jogoDoFunil()?.actions||[]).forEach(a=>found.add(a));
+  /* o que o funil já emite entra sempre: pode ter sido digitado à mão */
+  for(const node of Object.values(funnel?.nodes||{}))
+    for(const porPergunta of Object.values(node.outputs||{}))
+      for(const saida of Object.values(porPergunta||{})) if(saida.emit) found.add(saida.emit);
+  for(const peer of peers)
+    if(!funnel?.game || peer.agent===funnel.game) (peer.actions||[]).forEach(a=>found.add(a));
+  return [...found];
+}
+const actionLabel = id => id;
+
+/* =====================================================================
+   Tipos de nó
+   choice: ramifica pela opção escolhida
+   noul  : ramifica por um limiar sobre a resposta 0..1
+   score : ramifica pelo nível mais próximo da escala
+   ===================================================================== */
+
+const TIPO_INFO={
+  choice:{dica:'O Jev escolhe uma das opções que você descreveu. Cada opção vira uma saída do nó.'},
+  noul:{dica:'O Jev responde um número de 0 a 1. O nó tem duas saídas: acima e abaixo do limiar. '+
+    'Este tipo não devolve confiança, então o piso não funciona com ele.'},
+  score:{dica:'O Jev dá uma nota contínua sobre a escala — 1.68, por exemplo. O nó arredonda '+
+    'para o nível mais próximo e sai por ele: 1.68 arredonda para 2, então sai pelo nível 2.'},
+};
+
+const PERGUNTA_PADRAO={
+  choice:()=>({type:'choice',instructions:'',threshold:0.5,
+               criteria:{opcao_1:'',opcao_2:''}}),
+  noul:()=>({type:'noul',instructions:'',threshold:0.5,criteria:null}),
+  score:()=>({type:'score',instructions:'',threshold:0.5,
+              criteria:['','','']}),
+};
+
+/* as saídas do nó saem da pergunta que ramifica — nunca são digitadas à mão */
+/* As respostas possíveis de uma pergunta. Cada uma pode virar uma ligação. */
+function branchIds(q){
+  if(!q) return [];
+  if(q.type==='noul') return ['sim','nao'];
+  if(q.type==='score') return (q.criteria||[]).map((_,i)=>'nivel_'+i);
+  return Object.keys(q.criteria||{});
+}
+
+/* Que nota leva a esta saída. É o que torna óbvio como um número vira caminho. */
+function faixaDaSaida(q,bid){
+  if(!q) return '';
+  if(q.type==='noul'){
+    const t=q.threshold??0.5;
+    return bid==='sim'?`resposta ≥ ${t}`:`resposta < ${t}`;
+  }
+  if(q.type!=='score') return '';
+  const n=(q.criteria||[]).length;
+  const i=Number(bid.split('_')[1]);
+  if(!n||Number.isNaN(i)) return '';
+  if(n===1) return 'qualquer nota';
+  if(i===0) return `nota < ${(0.5).toFixed(1)}`;
+  if(i===n-1) return `nota ≥ ${(n-1.5).toFixed(1)}`;
+  return `${(i-0.5).toFixed(1)} a ${(i+0.5).toFixed(1)}`;
+}
+
+/* Quantas saídas esta pergunta geraria se fosse ela a ramificar. */
+
+
+function branchLabel(q,bid){
+  if(!q) return bid;
+  if(q.type==='noul'){
+    const t=q.threshold??0.5;
+    return bid==='sim'?`≥ ${t}`:`< ${t}`;
+  }
+  if(q.type==='score'){
+    const i=Number(bid.split('_')[1]);
+    const texto=(q.criteria||[])[i]||'';
+    return `${i} · ${texto.length>20?texto.slice(0,20)+'…':texto}`;
+  }
+  return bid;
+}
+
+function ligacaoDe(node,qid,bid){ return (node.outputs?.[qid]||{})[bid]; }
+function estaLigada(saida){ return !!(saida&&(saida.to||saida.emit)); }
+function ligacoesDoNo(node){
+  const fora=[];
+  for(const [qid,por] of Object.entries(node.outputs||{}))
+    for(const [bid,saida] of Object.entries(por||{}))
+      if(estaLigada(saida)) fora.push({qid,bid,saida});
+  return fora;
+}
+
+/* uma saída por resposta de cada pergunta, preservando as ligações */
+function normalizeNode(node){
+  node.questions=node.questions||{};
+  const antigo=node.outputs||{}, novo={};
+  for(const [qid,q] of Object.entries(node.questions)){
+    novo[qid]={};
+    for(const bid of branchIds(q)) novo[qid][bid]=(antigo[qid]||{})[bid]||{to:null,emit:null};
+  }
+  node.outputs=novo;
+  const fb=node.fallback;
+  if(!(fb&&novo[fb.question]&&novo[fb.question][fb.branch])) node.fallback=null;
+  return node;
+}
+
+function noVazio(){
+  return normalizeNode({label:'Novo nó',questions:{},outputs:{},
+                        min_confidence:0,fallback:null,x:40,y:120});
+}
+
+/* mesma conta do node_problems no servidor, para pintar o nó de vermelho */
+function nodeProblems(node){
+  const qs=node.questions||{};
+  const faltas=[];
+  if(!Object.keys(qs).length) return ['sem pergunta nenhuma'];
+  for(const [qid,q] of Object.entries(qs)){
+    if(!(q.instructions||'').trim()) faltas.push(`"${qid}" sem enunciado`);
+    if(q.type==='score'&&(q.criteria||[]).length<2) faltas.push(`escala de "${qid}" com menos de 2 níveis`);
+    if(q.type==='choice'&&Object.keys(q.criteria||{}).length<2) faltas.push(`"${qid}" com menos de 2 opções`);
+  }
+  /* saída solta não é problema: ela só não aciona nada. O que trava é o nó
+     inteiro sem nenhuma ligação, porque aí não há como continuar. */
+  const ligadas=ligacoesDoNo(node);
+  if(!ligadas.length) faltas.push('nenhuma saída ligada: o nó não tem como continuar');
+  for(const {qid,bid,saida} of ligadas)
+    if(saida.to&&!funnel.nodes[saida.to]) faltas.push(`${qid} → ${bid} aponta para nó inexistente`);
+  if(node.min_confidence&&!node.fallback) faltas.push('piso sem saída de segurança');
+  return faltas;
+}
+
+function actionColumnX(){
+  const maxX=Math.max(0,...Object.values(funnel.nodes).map(n=>n.x));
+  return maxX+NODE_W+110;
+}
+
+/* O que fica recolhido, por funil/nó/pergunta. É preferência de tela,
+   então mora no navegador junto com o resto do layout. */
+/* preenchido no start(): LAYOUT_KEY só existe mais abaixo no arquivo */
+let recolhidos=new Set();
+function guardarRecolhidos(){ salvarLayout({recolhidos:[...recolhidos]}); }
+const chaveNo=nid=>`${funnelId}|${nid}`;
+const chaveQ=(nid,qid)=>`${funnelId}|${nid}|${qid}`;
+
+/* Probabilidade de uma saída/nível a partir da resposta daquela pergunta. */
+function probDaLeitura(leitura,bid){
+  if(!leitura) return null;
+  if(leitura.type==='noul'){
+    const v=Number(leitura.value);
+    if(!Number.isFinite(v)) return null;
+    return bid==='sim'||bid==='valor'?v:1-v;
+  }
+  const probs=leitura.probabilities;
+  if(!probs) return null;
+  const bruto=leitura.type==='score'?probs[bid.split('_')[1]]:probs[bid];
+  const n=Number(bruto);
+  if(!Number.isFinite(n)) return null;
+  return Math.max(0,Math.min(1,n>1?n/100:n));
+}
+
+function selinhoProb(prob,escolhida){
+  if(prob===null) return '';
+  const cor=rgbStr(corDaProb(prob));
+  return `<span class="pct${escolhida?' venceu':''}" style="color:${cor};border-color:${cor}66">`
+       + `${Math.round(prob*100)}%</span>`;
+}
+
+/* As linhas de uma pergunta. A que ramifica leva destino e bolinha de arrastar;
+   as outras mostram só a distribuição, porque não levam a lugar nenhum. */
+function linhasDaPergunta(node,qid,q,leitura,passo){
+  const ids=branchIds(q);
+  if(!ids.length) return '<div class="nodeVazio">sem respostas ainda</div>';
+  const decidiu=passo&&passo.question===qid;
+  return ids.map(bid=>{
+    const saida=ligacaoDe(node,qid,bid)||{};
+    const ligada=estaLigada(saida);
+    const destino=saida.emit
+      ? `<span class="optTo emit">⚑ ${saida.emit}</span>`
+      : (saida.to?`<span class="optTo">→ ${funnel.nodes[saida.to]?.label??'?'}</span>`
+                 :`<span class="optTo solta">—</span>`);
+    const venceu=decidiu&&passo.choice===bid;
+    const prob=probDaLeitura(leitura,bid);
+    return `<div class="opt${ligada?'':' solta'}${venceu?' lit':''}"
+                 data-opt="${qid}|${bid}"
+                 title="arraste daqui até um nó ou uma ação para ligar; solte no vazio para desligar">
+              <span class="dot"></span>
+              <span class="optName">${branchLabel(q,bid)}</span>
+              ${prob===null?'<span class="pct vazio">—</span>':selinhoProb(prob,venceu)}
+              ${destino}
+              <span class="porta" data-porta="${qid}|${bid}"></span>
+            </div>`;
+  }).join('');
+}
+
+function corpoDoNo(nid,node,passo){
+  return Object.entries(node.questions||{}).map(([qid,q])=>{
+    const fechado=recolhidos.has(chaveQ(nid,qid));
+    const leitura=passo?.answers?.[qid];
+    const decidiu=passo&&passo.question===qid;
+    const ligadas=Object.values(node.outputs?.[qid]||{}).filter(estaLigada).length;
+    return `<div class="qBloco${decidiu?' rota':''}">
+      <div class="qBlocoCab" data-q-recolher="${chaveQ(nid,qid)}">
+        <span class="chevron">${fechado?'▸':'▾'}</span>
+        <span class="qNome">${qid}</span>
+        <span class="ntype ${q.type}">${q.type}</span>
+        ${ligadas?`<span class="marcaRota">${ligadas} ligada(s)</span>`:''}
+      </div>
+      ${fechado?'':linhasDaPergunta(node,qid,q,leitura,passo)}
+    </div>`;
+  }).join('');
+}
+
+function renderGraph(){
+  if(!funnel) return;
+  const inner=$('#graphInner');
+  inner.querySelectorAll('.node,.pill').forEach(el=>el.remove());
+
+  const passoPorNo=new Map();
+  (lastTrace||[]).forEach(s=>passoPorNo.set(s.node,s));
+
+  for(const [id,node] of Object.entries(funnel.nodes)){
+    const el=document.createElement('div');
+    el.className='node'+(id===funnel.entry?' entry':'')+(id===selectedNode?' sel':'');
+    el.dataset.node=id;
+    el.style.left=node.x+'px'; el.style.top=node.y+'px';
+
+    const passo=passoPorNo.get(id);
+    const total=Object.keys(node.questions||{}).length;
+    const noFechado=recolhidos.has(chaveNo(id));
+
+    const shield=node.min_confidence&&node.fallback
+      ? `<span class="shield" title="abaixo de ${node.min_confidence} cai para ${node.fallback}">🛡 ${node.min_confidence}</span>`:'';
+    const faltas=nodeProblems(node);
+    if(faltas.length) el.classList.add('incompleto');
+
+    const rodape=total
+      ? `<div class="nodeSignals" title="${total} pergunta(s) num request só">
+           <span class="tag" style="border-color:#2b6b52;color:var(--green)">${total} em 1 request</span>
+         </div>`:'';
+    const corpo=noFechado
+      ? `<div class="nodeFechado">${total} pergunta(s) · clique em ▸ para abrir</div>`
+      : (total?corpoDoNo(id,node,passo):'<div class="nodeVazio">nenhuma pergunta ainda</div>')
+        + rodape;
+    const aviso=(!noFechado&&faltas.length)?`<div class="nodeFalta">⚠ ${faltas.join(' · ')}</div>`:'';
+
+    el.innerHTML=`<div class="nodeHead">
+        <span class="chevron no" data-no-recolher="${chaveNo(id)}">${noFechado?'▸':'▾'}</span>
+        <span class="nodeTitle">${node.label}</span>
+        ${shield}${id===funnel.entry?'<span class="badge">INÍCIO</span>':''}
+      </div>${corpo}${aviso}`;
+    inner.appendChild(el);
+  }
+
+  const colX=actionColumnX();
+  /* a pilula fica onde foi largada; sem posicao guardada, cai na coluna */
+  const posAcao=funnel.action_pos||{};
+  knownActions().forEach((id,i)=>{
+    const pill=document.createElement('div');
+    pill.className='pill'; pill.dataset.action=id;
+    const pos=posAcao[id];
+    pill.style.left=(pos?pos.x:colX)+'px';
+    pill.style.top=(pos?pos.y:60+i*74)+'px';
+    pill.textContent=id;
+    pill.title='arraste para mover; solte uma resposta aqui para ligar';
+    inner.appendChild(pill);
+  });
+
+  /* funil sem nó: em vez de um quadriculado mudo, diz o que fazer */
+  inner.querySelector('.vazioAviso')?.remove();
+  if(!Object.keys(funnel.nodes).length){
+    const aviso=document.createElement('div');
+    aviso.className='vazioAviso';
+    aviso.innerHTML=`<div><b>Funil vazio</b><span>
+      Escolha o tipo ao lado do botão
+      <b style="display:inline;color:var(--text)">+ nó</b>, no topo, e crie o primeiro.
+      Pode salvar assim e continuar depois.</span></div>`;
+    inner.appendChild(aviso);
+  }
+
+  /* o canvas precisa caber tambem as pilulas que sairam da coluna */
+  const pontosAcao=knownActions().map((id,i)=>posAcao[id]||{x:colX,y:60+i*74});
+  inner.style.minWidth=Math.max(colX+260,
+    ...pontosAcao.map(pt=>pt.x+260))+'px';
+  inner.style.minHeight=Math.max(...Object.values(funnel.nodes).map(n=>n.y+260),
+                                 ...pontosAcao.map(pt=>pt.y+120),400)+'px';
+  drawWires();
+  const total=Object.keys(funnel.nodes).length;
+  const quebrados=Object.values(funnel.nodes).filter(n=>nodeProblems(n).length).length;
+  const estado=!total
+    ? '<span class="rascunho">vazio</span>'
+    : (quebrados?`<span class="rascunho">rascunho · ${quebrados} nó(s) incompleto(s)</span>`
+                :'<span class="rascunho pronto">pronto</span>');
+  $('#funnelMeta').innerHTML=`${funnel.name} · ${total} nó(s)`+
+    (funnel.game?` · agente "${funnel.game}"`:'')+' '+estado;
+}
+
+function optionAnchor(nodeId,optId){
+  const node=document.querySelector(`.node[data-node="${nodeId}"]`);
+  const opt=node?.querySelector(`.opt[data-opt="${CSS.escape(optId)}"]`);
+  if(!node||!opt) return null;
+  return {x:node.offsetLeft+node.offsetWidth,y:node.offsetTop+opt.offsetTop+opt.offsetHeight/2};
+}
+const nodeInlet=id=>{const n=document.querySelector(`.node[data-node="${id}"]`);
+  return n?{x:n.offsetLeft,y:n.offsetTop+18}:null;};
+const pillInlet=id=>{const p=document.querySelector(`.pill[data-action="${CSS.escape(id)}"]`);
+  return p?{x:p.offsetLeft,y:p.offsetTop+p.offsetHeight/2}:null;};
+
+/* vermelho (improvável) -> amarelo -> verde brilhante (provável) */
+function corDaProb(p){
+  const paradas=[[0,[255,102,122]],[0.5,[255,200,87]],[1,[85,230,165]]];
+  const v=Math.max(0,Math.min(1,p));
+  for(let i=0;i<paradas.length-1;i++){
+    const [a,ca]=paradas[i],[b,cb]=paradas[i+1];
+    if(v>=a&&v<=b){
+      const t=(v-a)/(b-a||1);
+      return ca.map((c,k)=>Math.round(c+(cb[k]-c)*t));
+    }
+  }
+  return paradas[2][1];
+}
+const rgbStr=c=>`rgb(${c[0]},${c[1]},${c[2]})`;
+
+/* ponto sobre a curva, para o rótulo acompanhar o fio */
+function pontoNaCurva(from,to,dx,t){
+  const u=1-t;
+  const p1={x:from.x+dx,y:from.y}, p2={x:to.x-dx,y:to.y};
+  return {
+    x:u*u*u*from.x+3*u*u*t*p1.x+3*u*t*t*p2.x+t*t*t*to.x,
+    y:u*u*u*from.y+3*u*u*t*p1.y+3*u*t*t*p2.y+t*t*t*to.y,
+  };
+}
+
+/* clique no X desliga aquela saída */
+$('#graphInner').addEventListener('click',e=>{
+  const alvo=e.target.closest('[data-desligar]');
+  if(!alvo) return;
+  const [nid,qid,bid]=alvo.dataset.desligar.split('|');
+  const saida=ligacaoDe(funnel.nodes[nid],qid,bid);
+  if(saida){ saida.to=null; saida.emit=null; }
+  renderGraph();
+  if(selectedNode) renderInspector();
+  validate();
+  e.stopPropagation();
+});
+
+/* X que aparece ao passar o mouse, para desligar aquela saida */
+function botaoApagar(criar,meio,nodeId,qid,bid){
+  const apagar=criar('g');
+  apagar.setAttribute('class','apagar');
+  apagar.setAttribute('data-desligar',`${nodeId}|${qid}|${bid}`);
+  const bolha=criar('circle');
+  bolha.setAttribute('cx',meio.x); bolha.setAttribute('cy',meio.y);
+  bolha.setAttribute('r',9);
+  apagar.appendChild(bolha);
+  const xis=criar('text');
+  xis.setAttribute('x',meio.x); xis.setAttribute('y',meio.y+3.5);
+  xis.setAttribute('text-anchor','middle');
+  xis.textContent='✕';
+  apagar.appendChild(xis);
+  return apagar;
+}
+
+function drawWires(){
+  const svg=$('#wires'), inner=$('#graphInner');
+  svg.setAttribute('width',inner.scrollWidth);
+  svg.setAttribute('height',inner.scrollHeight);
+  svg.innerHTML='';
+  /* o layout pode ajustar alturas antes do funil carregar, e o resize dispara
+     a qualquer momento: sem funil não há o que desenhar, e o svg já foi limpo */
+  if(!funnel) return;
+
+  /* um passo por nó: dele saem as probabilidades de TODAS as saídas */
+  const passoPorNo=new Map();
+  (lastTrace||[]).forEach(s=>passoPorNo.set(s.node,s));
+
+  const criar=(tag)=>document.createElementNS('http://www.w3.org/2000/svg',tag);
+  const rotulos=[];
+
+  /* Perna curta terminando em bolinha: saida sem destino, mas com o que
+     agarrar para arrastar. */
+  function pernaSolta(from){
+    const toco=criar('path');
+    toco.setAttribute('d',`M ${from.x} ${from.y} L ${from.x+26} ${from.y}`);
+    toco.setAttribute('class','wire solta');
+    svg.appendChild(toco);
+    const ponta=criar('circle');
+    ponta.setAttribute('cx',from.x+28); ponta.setAttribute('cy',from.y);
+    ponta.setAttribute('r',3.5);
+    ponta.setAttribute('style','fill:#5a2740');
+    svg.appendChild(ponta);
+  }
+
+  /* Primeira passada: junta os fios e anota onde cada um quer chegar. Nada e
+     desenhado ainda, porque o ponto de chegada depende de quantos outros fios
+     vao para o mesmo lugar. */
+  const fios=[];
+  for(const [nodeId,node] of Object.entries(funnel.nodes)){
+    const passo=passoPorNo.get(nodeId);
+    for(const [qid,porPergunta] of Object.entries(node.outputs||{}))
+    for(const [bid,saida] of Object.entries(porPergunta||{})){
+      const from=optionAnchor(nodeId,`${qid}|${bid}`);
+      if(!from) continue;
+      const destino=saida.emit?`emit:${saida.emit}`:(saida.to?`node:${saida.to}`:null);
+      const base=saida.emit?pillInlet(saida.emit):(saida.to?nodeInlet(saida.to):null);
+      if(!destino||!base){ pernaSolta(from); continue; }
+      fios.push({nodeId,qid,bid,from,destino,base,
+                 prob:probDaLeitura(passo?.answers?.[qid],bid),
+                 escolhida:!!(passo&&passo.question===qid&&passo.choice===bid)});
+    }
+  }
+
+  /* Duas decisoes diferentes podem levar a mesma acao — acelerar por reta livre
+     e acelerar por ultrapassagem, por exemplo. Se as duas chegassem no mesmo
+     pixel, virariam um fio so na tela. Entao quem divide destino chega em
+     leque, ordenado de cima para baixo para os fios nao se cruzarem. */
+  const ESPACO_CHEGADA=11;
+  const porDestino=new Map();
+  for(const f of fios){
+    if(!porDestino.has(f.destino)) porDestino.set(f.destino,[]);
+    porDestino.get(f.destino).push(f);
+  }
+  for(const grupo of porDestino.values()){
+    grupo.sort((a,b)=>a.from.y-b.from.y);
+    grupo.forEach((f,i)=>{
+      const desloc=(i-(grupo.length-1)/2)*ESPACO_CHEGADA;
+      /* afasta tambem no x: assim as curvas nao se encavalam na reta final */
+      f.to={x:f.base.x-Math.abs(desloc)*0.4, y:f.base.y+desloc};
+      f.irmaos=grupo.length;
+    });
+  }
+
+  /* Selo de quantas decisoes chegam. Sem ele, duas ligacoes viram so um
+     emaranhado e nao da para saber que sao duas. */
+  inner.querySelectorAll('.chegadas').forEach(el=>el.remove());
+  for(const [destino,grupo] of porDestino){
+    if(grupo.length<2) continue;
+    const id=destino.slice(5);
+    const alvo=destino.startsWith('emit:')
+      ? inner.querySelector(`.pill[data-action="${CSS.escape(id)}"]`)
+      : inner.querySelector(`.node[data-node="${CSS.escape(id)}"]`);
+    if(!alvo) continue;
+    const selo=document.createElement('span');
+    selo.className='chegadas';
+    selo.textContent=grupo.length;
+    selo.title=`${grupo.length} decisoes diferentes levam aqui`;
+    alvo.appendChild(selo);
+  }
+
+  /* Segunda passada: agora sim desenha */
+  for(const {from,to,prob,escolhida,nodeId,qid,bid} of fios){
+    const dx=Math.max(38,Math.abs(to.x-from.x)*0.45);
+    const d=`M ${from.x} ${from.y} C ${from.x+dx} ${from.y}, ${to.x-dx} ${to.y}, ${to.x} ${to.y}`;
+    const grupo=criar('g');
+    grupo.setAttribute('class','fio');
+
+    if(prob===null){
+      const pegador=criar('path');
+      pegador.setAttribute('d',d);
+      pegador.setAttribute('class','fioPegador');
+      grupo.appendChild(pegador);
+      const path=criar('path');
+      path.setAttribute('d',d);
+      path.setAttribute('class','wire'+(escolhida?' lit':''));
+      grupo.appendChild(path);
+      grupo.appendChild(botaoApagar(criar,pontoNaCurva(from,to,dx,0.5),nodeId,qid,bid));
+      svg.appendChild(grupo);
+      continue;
+    }
+
+    const cor=rgbStr(corDaProb(prob));
+    if(escolhida){
+      const halo=criar('path');
+      halo.setAttribute('d',d);
+      halo.setAttribute('class','wire');
+      halo.setAttribute('style',`stroke:${cor};stroke-width:9;opacity:.20`);
+      grupo.appendChild(halo);
+    }
+    /* faixa invisivel e grossa: da area para o mouse pegar o fio */
+    const pegador=criar('path');
+    pegador.setAttribute('d',d);
+    pegador.setAttribute('class','fioPegador');
+    grupo.appendChild(pegador);
+
+    const path=criar('path');
+    path.setAttribute('d',d);
+    path.setAttribute('class','wire');
+    path.setAttribute('style',
+      `stroke:${cor};stroke-width:${(1.4+prob*3).toFixed(2)};opacity:${(0.35+prob*0.65).toFixed(2)}`);
+    grupo.appendChild(path);
+
+    grupo.appendChild(botaoApagar(criar,pontoNaCurva(from,to,dx,0.5),nodeId,qid,bid));
+    svg.appendChild(grupo);
+
+    /* rotulo sobre a curva; guarda para desenhar tudo por cima dos fios */
+    rotulos.push({ponto:pontoNaCurva(from,to,dx,0.28),prob,cor,escolhida});
+  }
+
+  for(const {ponto,prob,cor,escolhida} of rotulos){
+    const fundo=criar('rect');
+    const texto=`${Math.round(prob*100)}%`;
+    const largura=texto.length*6.6+8;
+    fundo.setAttribute('x',ponto.x-largura/2);
+    fundo.setAttribute('y',ponto.y-8.5);
+    fundo.setAttribute('width',largura);
+    fundo.setAttribute('height',15);
+    fundo.setAttribute('rx',4);
+    fundo.setAttribute('style',`fill:#0a1422;stroke:${cor};stroke-width:${escolhida?1.4:0.8};opacity:.95`);
+    svg.appendChild(fundo);
+
+    const label=criar('text');
+    label.setAttribute('x',ponto.x);
+    label.setAttribute('y',ponto.y+3);
+    label.setAttribute('text-anchor','middle');
+    label.setAttribute('class','wireLabel');
+    label.setAttribute('style',`fill:${cor};${escolhida?'font-weight:700':''}`);
+    label.textContent=texto;
+    svg.appendChild(label);
+  }
+}
+
+function highlightTrace(trace,action){
+  lastTrace=trace;
+  /* O corpo do nó carrega a porcentagem de cada resposta, e ela só é montada
+     no renderGraph. Chamar só o drawWires deixava número no fio e "—" dentro
+     do nó — e as perguntas que são leitura pura não têm fio nenhum. */
+  if(drag||ligando||puxandoAcao){ drawWires(); return; }   /* não some sob o mouse */
+  renderGraph();
+  /* o renderGraph já acende a resposta vencedora de cada nó; aqui ficam só
+     o nó e a ação, que ele não tem como saber */
+  for(const step of trace||[])
+    document.querySelector(`.node[data-node="${step.node}"]`)?.classList.add('lit');
+  if(action) document.querySelector(`.pill[data-action="${CSS.escape(action)}"]`)?.classList.add('lit');
+}
+
+/* ---- arrastar uma ação do contrato até uma resposta do funil ----
+   O contrato fica fora do #graphInner, então este arrasto escuta no documento
+   inteiro. Vale o mesmo limiar do outro: enquanto o mouse não anda, é clique. */
+let puxandoAcao=null, fantasmaAcao=null;
+
+function moverFantasma(x,y,texto){
+  if(!fantasmaAcao){
+    fantasmaAcao=document.createElement('div');
+    fantasmaAcao.className='fantasmaAcao';
+    document.body.appendChild(fantasmaAcao);
+  }
+  fantasmaAcao.textContent='⚑ '+texto;
+  fantasmaAcao.style.left=x+'px';
+  fantasmaAcao.style.top=y+'px';
+}
+function limparArrastoAcao(){
+  fantasmaAcao?.remove(); fantasmaAcao=null;
+  puxandoAcao?.el.classList.remove('puxando');
+  document.querySelectorAll('.alvoLigacao').forEach(x=>x.classList.remove('alvoLigacao'));
+  puxandoAcao=null;
+}
+/* a resposta do funil que está embaixo do cursor, se houver */
+function respostaSob(x,y){
+  const opt=document.elementFromPoint(x,y)?.closest('.opt');
+  const no=opt?.closest('.node');
+  if(!opt||!no||!opt.dataset.opt) return null;
+  const corte=opt.dataset.opt.indexOf('|');
+  return {el:opt, nodeId:no.dataset.node,
+          qid:opt.dataset.opt.slice(0,corte), bid:opt.dataset.opt.slice(corte+1)};
+}
+
+document.addEventListener('pointerdown',e=>{
+  const chip=e.target.closest('.chip[data-action]');
+  if(!chip) return;
+  puxandoAcao={id:chip.dataset.action,x0:e.clientX,y0:e.clientY,ativo:false,el:chip};
+  chip.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+document.addEventListener('pointermove',e=>{
+  if(!puxandoAcao) return;
+  if(!puxandoAcao.ativo){
+    if(Math.hypot(e.clientX-puxandoAcao.x0,e.clientY-puxandoAcao.y0)<4) return;
+    puxandoAcao.ativo=true;
+    puxandoAcao.el.classList.add('puxando');
+  }
+  moverFantasma(e.clientX,e.clientY,puxandoAcao.id);
+  document.querySelectorAll('.alvoLigacao').forEach(x=>x.classList.remove('alvoLigacao'));
+  respostaSob(e.clientX,e.clientY)?.el.classList.add('alvoLigacao');
+});
+document.addEventListener('pointerup',e=>{
+  if(!puxandoAcao) return;
+  const {id,ativo}=puxandoAcao;
+  const alvo=ativo?respostaSob(e.clientX,e.clientY):null;
+  limparArrastoAcao();
+  if(!alvo||!funnel) return;
+  const saida=ligacaoDe(funnel.nodes[alvo.nodeId],alvo.qid,alvo.bid);
+  if(!saida) return;
+  saida.emit=id; saida.to=null;
+  renderGraph();
+  if(selectedNode) renderInspector();
+  validate();
+});
+
+/* ---- arrastar de uma saída até um alvo ---- */
+let ligando=null;
+
+function pontoNoGrafo(ev){
+  const inner=$('#graphInner'), r=inner.getBoundingClientRect();
+  return {x:ev.clientX-r.left+inner.scrollLeft, y:ev.clientY-r.top+inner.scrollTop};
+}
+
+function desenharFioTemporario(destino){
+  const svg=$('#wires');
+  svg.querySelector('.temporario')?.remove();
+  const from=optionAnchor(ligando.nodeId,ligando.optId);
+  if(!from) return;
+  const dx=Math.max(30,Math.abs(destino.x-from.x)*0.45);
+  const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d',`M ${from.x} ${from.y} C ${from.x+dx} ${from.y}, `+
+                        `${destino.x-dx} ${destino.y}, ${destino.x} ${destino.y}`);
+  path.setAttribute('class','wire temporario');
+  svg.appendChild(path);
+}
+
+function marcarAlvo(ev){
+  document.querySelectorAll('.alvoLigacao').forEach(el=>el.classList.remove('alvoLigacao'));
+  const sob=document.elementFromPoint(ev.clientX,ev.clientY);
+  /* a ação também pode ser pega no contrato, não só na pílula do grafo */
+  const pill=sob?.closest('.pill')||sob?.closest('.chip[data-action]');
+  const no=sob?.closest('.node');
+  if(pill) pill.classList.add('alvoLigacao');
+  else if(no&&no.dataset.node!==ligando.nodeId) no.classList.add('alvoLigacao');
+  return {pill,no};
+}
+
+function terminarLigacao(ev){
+  const {nodeId,qid,bid,ativo,el}=ligando;
+  /* marcarAlvo ainda usa `ligando`, entao roda antes de limpar */
+  const alvo=ativo?marcarAlvo(ev):{};
+  el?.classList.remove('puxando');
+  document.querySelectorAll('.alvoLigacao').forEach(x=>x.classList.remove('alvoLigacao'));
+  $('#wires').querySelector('.temporario')?.remove();
+  ligando=null;
+  /* nao chegou a arrastar: foi clique. So seleciona — apagar a ligacao de
+     quem so clicou na linha seria uma surpresa ruim. */
+  if(!ativo){ selectNode(nodeId); return; }
+  const saida=ligacaoDe(funnel.nodes[nodeId],qid,bid);
+  if(saida){
+    if(alvo.pill){ saida.emit=alvo.pill.dataset.action; saida.to=null; }
+    else if(alvo.no&&alvo.no.dataset.node!==nodeId){ saida.to=alvo.no.dataset.node; saida.emit=null; }
+    else { saida.to=null; saida.emit=null; }   /* soltar no vazio desliga */
+  }
+  renderGraph();
+  if(selectedNode) renderInspector();
+  validate();
+}
+
+let drag=null;
+$('#graphInner').addEventListener('click',e=>{
+  const alvo=e.target.closest('[data-q-recolher],[data-no-recolher]');
+  if(!alvo) return;
+  const chave=alvo.dataset.qRecolher||alvo.dataset.noRecolher;
+  recolhidos.has(chave)?recolhidos.delete(chave):recolhidos.add(chave);
+  guardarRecolhidos();
+  renderGraph();
+  e.stopPropagation();
+});
+
+$('#graphInner').addEventListener('pointerdown',e=>{
+  /* A linha inteira da saida puxa fio; a bolinha e so a dica visual.
+     So vira ligacao depois de andar alguns pixels — ver terminarLigacao. */
+  const opt=e.target.closest('.opt');
+  if(opt){
+    const nodeEl=opt.closest('.node');
+    const corte=opt.dataset.opt.indexOf('|');   /* id de pergunta pode ter '|' */
+    ligando={nodeId:nodeEl.dataset.node, optId:opt.dataset.opt,
+             qid:opt.dataset.opt.slice(0,corte), bid:opt.dataset.opt.slice(corte+1),
+             x0:e.clientX, y0:e.clientY, ativo:false, el:opt};
+    opt.setPointerCapture(e.pointerId);
+    e.preventDefault(); e.stopPropagation();
+    return;
+  }
+  /* a pilula de acao se move como um no: arrasta pelo corpo inteiro */
+  const pillEl=e.target.closest('.pill');
+  if(pillEl){
+    drag={tipo:'acao',id:pillEl.dataset.action,
+          dx:e.clientX-pillEl.offsetLeft,dy:e.clientY-pillEl.offsetTop,el:pillEl};
+    pillEl.setPointerCapture(e.pointerId);
+    e.preventDefault(); e.stopPropagation();
+    return;
+  }
+  if(e.target.closest('[data-no-recolher]')) return;   /* o chevron só recolhe */
+  const nodeEl=e.target.closest('.node'); if(nodeEl) selectNode(nodeEl.dataset.node);
+  if(!e.target.closest('.nodeHead')) return;
+  drag={tipo:'no',id:nodeEl.dataset.node,
+        dx:e.clientX-nodeEl.offsetLeft,dy:e.clientY-nodeEl.offsetTop,el:nodeEl};
+  nodeEl.setPointerCapture(e.pointerId); e.preventDefault();
+});
+$('#graphInner').addEventListener('pointermove',e=>{
+  if(ligando){
+    if(!ligando.ativo){
+      if(Math.hypot(e.clientX-ligando.x0,e.clientY-ligando.y0)<4) return;
+      ligando.ativo=true;
+      ligando.el.classList.add('puxando');
+    }
+    desenharFioTemporario(pontoNoGrafo(e)); marcarAlvo(e); return;
+  }
+  if(!drag) return;
+  const x=Math.max(0,e.clientX-drag.dx), y=Math.max(0,e.clientY-drag.dy);
+  if(drag.tipo==='acao'){
+    funnel.action_pos=funnel.action_pos||{};
+    funnel.action_pos[drag.id]={x:Math.round(x),y:Math.round(y)};
+  }else{
+    funnel.nodes[drag.id].x=Math.round(x); funnel.nodes[drag.id].y=Math.round(y);
+  }
+  drag.el.style.left=x+'px'; drag.el.style.top=y+'px'; drawWires();
+});
+addEventListener('pointerup',e=>{
+  if(ligando){ terminarLigacao(e); return; }
+  if(drag){drag=null; renderGraph();}
+});
+
+/* =====================================================================
+   Inspector
+   ===================================================================== */
+function selectNode(id){
+  selectedNode=id;
+  document.querySelectorAll('.node').forEach(n=>n.classList.toggle('sel',n.dataset.node===id));
+  renderInspector();
+}
+
+function targetOptions(selected,saida){
+  const nodeOpts=Object.entries(funnel.nodes).filter(([nid])=>nid!==selected)
+    .map(([nid,n])=>`<option value="node:${nid}" ${saida.to===nid?'selected':''}>→ ${n.label}</option>`).join('');
+  const acts=new Set(knownActions()); if(saida.emit) acts.add(saida.emit);
+  const actOpts=[...acts]
+    .map(a=>`<option value="emit:${a}" ${saida.emit===a?'selected':''}>⚑ ${a}</option>`).join('');
+  const none=(!saida.to&&!saida.emit)?'<option value="" selected>— escolha —</option>':'';
+  return `${none}<optgroup label="continuar no funil">${nodeOpts}</optgroup>
+          <optgroup label="ação final (emitida ao jogo)">${actOpts}</optgroup>
+          <option value="new:">＋ nova ação…</option>`;
+}
+
+/* Entrada nova de ação, no estilo da página: troca o select por um campo
+   com sugestões do contrato, Enter confirma e Esc cancela. */
+function abrirNovaAcao(sel,node,qid,bid){
+  const saida=ligacaoDe(node,qid,bid);
+  const anterior=saida.emit?`emit:${saida.emit}`:(saida.to?`node:${saida.to}`:'');
+  const jaUsadas=new Set(knownActions());
+  const sugestoes=(contract?.ok?contract.actions.map(a=>a.id):[]).filter(a=>!jaUsadas.has(a));
+  const listId='naSug_'+Math.random().toString(36).slice(2,8);
+
+  const caixa=document.createElement('span');
+  caixa.className='novaAcao';
+  caixa.innerHTML=`
+    <input class="naNome" placeholder="nome da ação" list="${listId}" autocomplete="off">
+    <datalist id="${listId}">${sugestoes.map(a=>`<option value="${a}">`).join('')}</datalist>
+    <button class="ok naOk" title="confirmar">✓</button>
+    <button class="naCancel" title="cancelar">✕</button>`;
+  sel.hidden=true;
+  sel.after(caixa);
+
+  const input=caixa.querySelector('.naNome');
+  const cancelar=()=>{ caixa.remove(); sel.hidden=false; sel.value=anterior; };
+  const confirmar=()=>{
+    const nome=input.value.trim();
+    if(!nome){ input.focus(); return; }
+    saida.to=null; saida.emit=nome;
+    renderGraph(); renderInspector(); validate();
+  };
+  caixa.querySelector('.naOk').addEventListener('click',confirmar);
+  caixa.querySelector('.naCancel').addEventListener('click',cancelar);
+  input.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){ e.preventDefault(); confirmar(); }
+    else if(e.key==='Escape'){ e.preventDefault(); cancelar(); }
+  });
+  input.focus();
+}
+
+/* ---------------------------------------------------------------
+   Um cartão = uma entrada do JSON de questions. Cada resposta possível
+   traz o seu destino: nó, ação, ou nada (aí simplesmente não aciona).
+   --------------------------------------------------------------- */
+/* O que realmente vai no request: só type, instructions e criteria.
+   Os destinos das saídas são do editor, não do protocolo. */
+function payloadDoNo(node){
+  const out={};
+  for(const [qid,q] of Object.entries(node.questions||{})){
+    const item={type:q.type,instructions:q.instructions||''};
+    if(q.type==='choice') item.criteria=q.criteria||{};
+    if(q.type==='score')  item.criteria=q.criteria||[];
+    out[qid]=item;
+  }
+  return out;
+}
+
+function destinoSelect(node,qid,bid){
+  const saida=ligacaoDe(node,qid,bid)||{to:null,emit:null};
+  return `<div class="ligRow" data-lig="${qid}|${bid}">
+            <span class="ligDe">${branchLabel(node.questions[qid],bid)}</span>
+            <span class="seta">→</span>
+            <select class="outTarget">${targetOptions(selectedNode,saida)}</select>
+          </div>`;
+}
+
+function perguntaCard(qid,q,node){
+  let criteria='';
+  if(q.type==='choice'){
+    criteria=`<div class="campo">
+      <span class="chave">criteria</span>
+      ${Object.entries(q.criteria||{}).map(([oid,desc])=>`
+        <div class="critRow" data-copt="${oid}">
+          <input class="qOptId" value="${oid}" placeholder="opção">
+          <input class="qOptDesc" value="${desc}" placeholder="quando o Jev deve escolher esta">
+          <button class="danger qDelOpt">✕</button>
+        </div>`).join('')}
+      <button class="qAddOpt mini">+ opção</button>
+    </div>`;
+  }else if(q.type==='score'){
+    criteria=`<div class="campo">
+      <span class="chave">criteria <i>(do menor para o maior)</i></span>
+      ${(q.criteria||[]).map((texto,i)=>`
+        <div class="critRow" data-lvl="${i}">
+          <span class="idx">${i}</span>
+          <input class="qLvlText" value="${texto}" placeholder="como é este nível">
+          <button class="danger qDelLvl">✕</button>
+        </div>`).join('')}
+      <button class="qAddLvl mini">+ nível</button>
+    </div>`;
+  }else{
+    criteria=`<div class="campo">
+      <span class="chave">limiar — acima dele a resposta é "sim"</span>
+      <input class="qThreshold" type="number" min="0" max="1" step="0.05"
+             value="${q.threshold??0.5}" style="width:100px">
+    </div>`;
+  }
+
+  const ligacoes=branchIds(q).map(b=>destinoSelect(node,qid,b)).join('');
+
+  return `<div class="qCard" data-q="${qid}">
+    <div class="qTopo">
+      <select class="qTipo">
+        ${['choice','noul','score'].map(t=>
+          `<option value="${t}" ${t===q.type?'selected':''}>${t}</option>`).join('')}
+      </select>
+      <input class="qId" value="${qid}" placeholder="id da pergunta (ex.: departamento)">
+      <button class="danger qDel" title="remover pergunta">✕</button>
+    </div>
+    <div class="campo">
+      <span class="chave">instructions</span>
+      <textarea class="qInstr" rows="2"
+        placeholder="${q.type==='noul'?'Afirmação que o Jev avalia de 0 a 1.':'O que o Jev deve responder.'}"
+        >${q.instructions||''}</textarea>
+    </div>
+    ${criteria}
+    <div class="campo ligacoes">
+      <span class="chave">para onde vai cada resposta</span>
+      ${ligacoes||'<span class="muted">nenhuma resposta ainda</span>'}
+    </div>
+  </div>`;
+}
+
+function renderInspector(){
+  const host=$('#inspector');
+  const node=funnel?.nodes?.[selectedNode];
+  if(!node){ host.innerHTML='<p class="muted">Clique num nó para editar, ou crie um com <b>+ nó</b>.</p>'; return; }
+  normalizeNode(node);
+
+  const qs=Object.entries(node.questions);
+  const listaPerguntas=qs.length
+    ? qs.map(([qid,q])=>perguntaCard(qid,q,node)).join('')
+    : `<p class="vazioDica">Nenhuma pergunta ainda. Escolha o tipo abaixo
+        e clique <b>+ pergunta</b>.</p>`;
+
+  const acoes=knownActions();
+  const jogo=jogoDoFunil();
+  let avisoAcoes;
+  if(acoes.length){
+    avisoAcoes=`<p class="muted" style="margin:7px 0 0">Ações aceitas
+      ${jogo?`por <b>${jogo.id}</b>`:''}:
+      ${acoes.map(a=>`<span class="chip">${a}</span>`).join(' ')}</p>`;
+  }else if(contract?.ok&&funnel?.game){
+    const conhecidos=(contract.games||[]).map(g=>g.id).join(', ')||contract.game;
+    avisoAcoes=`<p class="muted" style="margin:7px 0 0">Este funil é do agente
+      <b>${funnel.game}</b>, que o jogo em ${contract.url} não conhece
+      (ele tem: ${conhecidos}). Troque o agente do funil, aponte o handshake
+      para o jogo certo, ou use <b>＋ nova ação…</b> para digitar à mão.</p>`;
+  }else{
+    avisoAcoes=`<p class="muted" style="margin:7px 0 0">Nenhuma ação conhecida ainda —
+      aperte <b>handshake</b> no painel de cima para ler o contrato do jogo.</p>`;
+  }
+
+  host.innerHTML=`
+    <div class="campo">
+      <span class="chave">nome do nó</span>
+      <input id="nodeLabel" value="${node.label}">
+    </div>
+
+    <h3 class="secao">perguntas
+      ${qs.length?`<span class="batchSelo">${qs.length} em 1 request</span>`:''}</h3>
+    <p class="typeNote">Todas saem num request só. Cada resposta pode ligar num nó
+      ou numa ação — ligação vazia não aciona nada. Ao rodar, vale a
+      <b>primeira</b> resposta que caiu numa ligação; as outras viram leitura.</p>
+    ${listaPerguntas}
+    <div class="sigAdd">
+      <select id="qNovoTipo">
+        <option value="choice">choice</option>
+        <option value="noul">noul</option>
+        <option value="score">score</option>
+      </select>
+      <button id="addQ">+ pergunta</button>
+    </div>
+    ${avisoAcoes}
+
+    <details class="avancado"${node.min_confidence?' open':''}>
+      <summary>opções avançadas</summary>
+      <div class="campo">
+        <span class="chave">piso de confiança</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="nodeFloor" type="number" min="0" max="1" step="0.05"
+                 value="${node.min_confidence||0}" style="width:90px">
+          <select id="nodeFallback" style="flex:1">
+            <option value="">— desligado: sempre segue o Jev —</option>
+            ${ligacoesDoNo(node).map(({qid,bid})=>{
+              const sel=node.fallback&&node.fallback.question===qid&&node.fallback.branch===bid;
+              return `<option value="${qid}|${bid}" ${sel?'selected':''}>cair para: ${qid} → ${branchLabel(node.questions[qid],bid)}</option>`;
+            }).join('')}
+          </select>
+        </div>
+        <p class="muted" style="margin:4px 0 0">Quando a confiança do Jev fica
+          <b>abaixo do piso</b>, o funil descarta a escolha dele e usa a saída
+          de segurança. Piso <b>0</b> desliga isso. Respostas <b>noul</b> não
+          trazem confiança, então não disparam o piso.</p>
+      </div>
+    </details>
+
+    <details class="avancado">
+      <summary>ver o JSON que sai no request</summary>
+      <pre class="jsonPreview">${JSON.stringify(payloadDoNo(node),null,2).replace(/</g,'&lt;')}</pre>
+    </details>
+
+    <div class="rowBtns">
+      <button id="makeEntry" ${selectedNode===funnel.entry?'disabled':''}>marcar como início</button>
+      <button id="delNode" class="danger">excluir nó</button>
+    </div>
+    <div id="warnHost"></div>`;
+
+  $('#nodeLabel').addEventListener('input',e=>{node.label=e.target.value; renderGraph();});
+  host.querySelectorAll('textarea').forEach(t=>{
+    t.addEventListener('focus',()=>lembrarTextarea(t));
+    t.addEventListener('click',()=>lembrarTextarea(t));
+  });
+
+  /* ---- ligações (valem para qualquer resposta de qualquer pergunta) ---- */
+  host.querySelectorAll('.ligRow .outTarget').forEach(sel=>{
+    const [qid,bid]=sel.closest('[data-lig]').dataset.lig.split('|');
+    sel.addEventListener('change',e=>{
+      const raw=e.target.value;
+      if(raw.startsWith('new:')){ abrirNovaAcao(e.target,node,qid,bid); return; }
+      const [kind,value]=raw.split(':');
+      const saida=ligacaoDe(node,qid,bid);
+      saida.to  = kind==='node'?value:null;
+      saida.emit= kind==='emit'?value:null;
+      renderGraph(); validate();
+    });
+  });
+
+  /* ---- cada pergunta ---- */
+  host.querySelectorAll('.qCard').forEach(card=>{
+    const qid=card.dataset.q;
+    const q=node.questions[qid];
+    if(!q) return;
+
+    card.querySelector('.qTipo').addEventListener('change',e=>{
+      const novo=e.target.value;
+      q.type=novo;
+      if(novo==='choice'&&(!q.criteria||Array.isArray(q.criteria)))
+        q.criteria={opcao_1:'',opcao_2:''};
+      if(novo==='score'&&!Array.isArray(q.criteria))
+        q.criteria=['primeiro nível','segundo nível'];
+      if(novo==='noul') q.criteria=null;
+      normalizeNode(node); renderGraph(); renderInspector(); validate();
+    });
+    card.querySelector('.qInstr').addEventListener('input',e=>{ q.instructions=e.target.value; });
+    card.querySelector('.qId').addEventListener('change',e=>{
+      const novo=e.target.value.trim();
+      if(!novo||novo===qid||node.questions[novo]){ e.target.value=qid; return; }
+      const refeitas={}, refeitasSaidas={};
+      for(const [k,v] of Object.entries(node.questions)) refeitas[k===qid?novo:k]=v;
+      for(const [k,v] of Object.entries(node.outputs||{})) refeitasSaidas[k===qid?novo:k]=v;
+      node.questions=refeitas; node.outputs=refeitasSaidas;
+      if(node.fallback?.question===qid) node.fallback.question=novo;
+      renderGraph(); renderInspector();
+    });
+    card.querySelector('.qDel').addEventListener('click',()=>{
+      delete node.questions[qid];
+      delete (node.outputs||{})[qid];
+      normalizeNode(node); renderGraph(); renderInspector(); validate();
+    });
+
+    card.querySelector('.qThreshold')?.addEventListener('change',e=>{
+      q.threshold=Math.max(0,Math.min(1,Number(e.target.value)||0.5));
+      renderGraph(); renderInspector();
+    });
+
+    card.querySelectorAll('.qLvlText').forEach(input=>{
+      const i=Number(input.closest('[data-lvl]').dataset.lvl);
+      input.addEventListener('input',e=>{ q.criteria[i]=e.target.value; renderGraph(); });
+    });
+    card.querySelectorAll('.qDelLvl').forEach(btn=>{
+      const i=Number(btn.closest('[data-lvl]').dataset.lvl);
+      btn.addEventListener('click',()=>{
+        q.criteria.splice(i,1);
+        /* as ligações são por índice: desloca as de baixo junto */
+        const antigo=node.outputs[qid]||{}, novo={};
+        q.criteria.forEach((_,k)=>{ novo['nivel_'+k]=antigo['nivel_'+(k>=i?k+1:k)]||{to:null,emit:null}; });
+        node.outputs[qid]=novo;
+        normalizeNode(node); renderGraph(); renderInspector(); validate();
+      });
+    });
+    card.querySelector('.qAddLvl')?.addEventListener('click',()=>{
+      q.criteria=q.criteria||[];
+      if(q.criteria.length>=7){
+        card.querySelector('.qAddLvl').insertAdjacentHTML('afterend',
+          '<div class="dica">A escala vai até 7 níveis.</div>');
+        setTimeout(()=>document.querySelector('.dica')?.remove(),2500);
+        return;
+      }
+      q.criteria.push('novo nível');
+      normalizeNode(node); renderGraph(); renderInspector();
+    });
+
+    card.querySelectorAll('.qOptId').forEach(input=>{
+      const oid=input.closest('[data-copt]').dataset.copt;
+      input.addEventListener('change',e=>{
+        const novo=e.target.value.trim();
+        if(!novo||novo===oid||q.criteria[novo]){ e.target.value=oid; return; }
+        const refeito={};
+        for(const [k,v] of Object.entries(q.criteria)) refeito[k===oid?novo:k]=v;
+        q.criteria=refeito;
+        const saidas=node.outputs[qid]||{};
+        if(saidas[oid]){ saidas[novo]=saidas[oid]; delete saidas[oid]; }
+        if(node.fallback?.question===qid&&node.fallback?.branch===oid) node.fallback.branch=novo;
+        normalizeNode(node); renderGraph(); renderInspector();
+      });
+    });
+    card.querySelectorAll('.qOptDesc').forEach(input=>{
+      const oid=input.closest('[data-copt]').dataset.copt;
+      input.addEventListener('input',e=>{ q.criteria[oid]=e.target.value; });
+    });
+    card.querySelectorAll('.qDelOpt').forEach(btn=>{
+      const oid=btn.closest('[data-copt]').dataset.copt;
+      btn.addEventListener('click',()=>{
+        delete q.criteria[oid];
+        delete (node.outputs[qid]||{})[oid];
+        normalizeNode(node); renderGraph(); renderInspector(); validate();
+      });
+    });
+    card.querySelector('.qAddOpt')?.addEventListener('click',()=>{
+      q.criteria=q.criteria||{};
+      let n=1; while(q.criteria['opcao_'+n]) n++;
+      q.criteria['opcao_'+n]='';
+      normalizeNode(node); renderGraph(); renderInspector();
+    });
+  });
+
+  $('#addQ').addEventListener('click',()=>{
+    const tipo=$('#qNovoTipo').value;
+    let n=1; while(node.questions['pergunta_'+n]) n++;
+    node.questions['pergunta_'+n]=PERGUNTA_PADRAO[tipo]();
+    normalizeNode(node); renderGraph(); renderInspector(); validate();
+  });
+
+  $('#nodeFloor').addEventListener('change',e=>{
+    node.min_confidence=Math.max(0,Math.min(1,Number(e.target.value)||0));
+    renderGraph(); validate();});
+  $('#nodeFallback').addEventListener('change',e=>{
+    const v=e.target.value;
+    node.fallback=v?{question:v.split('|')[0],branch:v.split('|')[1]}:null;
+    renderGraph(); validate();});
+
+  $('#makeEntry').addEventListener('click',()=>{
+    funnel.entry=selectedNode; renderGraph(); renderInspector(); validate();});
+  $('#delNode').addEventListener('click',()=>{
+    delete funnel.nodes[selectedNode];
+    for(const outro of Object.values(funnel.nodes))
+      for(const por of Object.values(outro.outputs||{}))
+        for(const saida of Object.values(por||{})) if(saida.to===selectedNode) saida.to=null;
+    if(funnel.entry===selectedNode) funnel.entry=Object.keys(funnel.nodes)[0]??'';
+    selectedNode=null; renderGraph(); renderInspector(); validate();
+  });
+  validate();
+}
+
+function validate(){
+  if(!funnel) return [];
+  const problems=[];
+  if(!Object.keys(funnel.nodes).length){
+    const host=$('#warnHost');
+    if(host) host.innerHTML='';
+    return ['O funil está vazio: crie o primeiro nó.'];
+  }
+  if(!funnel.nodes[funnel.entry]) problems.push('Nenhum nó está marcado como início.');
+  for(const node of Object.values(funnel.nodes))
+    nodeProblems(node).forEach(f=>problems.push(`"${node.label}": ${f}`));
+  const reach=new Set(), stack=funnel.nodes[funnel.entry]?[funnel.entry]:[];
+  while(stack.length){
+    const nid=stack.pop(); if(reach.has(nid)) continue; reach.add(nid);
+    for(const o of Object.values(funnel.nodes[nid].outputs||{})) if(o.to&&funnel.nodes[o.to]) stack.push(o.to);
+  }
+  for(const nid of Object.keys(funnel.nodes))
+    if(!reach.has(nid)) problems.push(`"${funnel.nodes[nid].label}" nunca é alcançado.`);
+  const host=$('#warnHost');
+  if(host) host.innerHTML=problems.length
+    ? `<div class="warnBox"><b>${problems.length} problema(s):</b><ul>${problems.map(p=>`<li>${p}</li>`).join('')}</ul></div>`:'';
+  mostrarSujo();
+  return problems;
+}
+
+/* =====================================================================
+   Feed das decisões que os jogos pediram
+   ===================================================================== */
+function decisionCard(d){
+  if(d.error){
+    return `<div class="dec err"><div class="decHead">
+      <span class="decAgent">${d.agent||'?'}</span><span class="muted">${d.funnel||''}</span></div>
+      <div class="err">⚠ ${d.error}</div></div>`;
+  }
+  const steps=(d.trace||[]).map((s,i)=>{
+    const c=Number(s.confidence), tone=c>=.7?'hi':(c>=.4?'mid':'lo');
+    const guard=s.guard?`<span class="guardNote">🛡 Jev disse <b>${s.guard.model_choice}</b>
+      (${Number(s.guard.confidence).toFixed(2)}) &lt; ${s.guard.threshold} → <b>${s.choice}</b></span>`:'';
+    const sigs=Object.values(s.signals||s.answers||{}).map(g=>{
+      const v=Number(g.value);
+      const shown=g.type==='score'?`${v.toFixed(2)}${g.label?' · '+g.label:''}`
+                 :(g.type==='noul'?v.toFixed(2):g.value);
+      return `<span class="sig"><b>${g.label_text||g.id}</b> ${shown}</span>`;
+    }).join('');
+    const leitura=s.reading
+      ? (s.type==='score'
+          ? `<span class="sig"><b>score</b> ${s.reading.value} → nível ${s.reading.level}</span>`
+          : `<span class="sig"><b>noul</b> ${s.reading.value} vs ${s.reading.threshold}</span>`)
+      : '';
+    return `<div class="traceStep${s.guard?' guarded':''}"><span class="hop">${i+1}</span>
+      <span class="traceBody"><span class="traceLabel">${s.label}
+        <span class="ntype ${s.type||'choice'}">${s.type||'choice'}</span></span>
+      <span class="traceChoice">${s.choice}</span> ${leitura}${guard}
+      ${sigs?`<span class="sigRow">${sigs}</span>`:''}</span>
+      <span class="conf ${tone}">${Number.isFinite(c)?c.toFixed(2):'—'}</span></div>`;
+  }).join('');
+  return `<div class="dec"><div class="decHead">
+      <span class="decAgent">${d.agent}</span>
+      <span class="muted">${d.funnel}</span>
+      <span class="spacer" style="flex:1"></span>
+      <span class="decAction">${d.action}</span>
+    </div>${steps}
+    <div class="muted" style="margin-top:6px">${d.hops} req · ${d.latency_ms} ms ·
+      ${d.usage?`${d.usage.input_tokens}↓ ${d.usage.output_tokens}↑`:''}</div></div>`;
+}
+
+/* estado do jogo vira texto de tela: pode ter '<' vindo de reclamacao de cliente */
+function esc(v){
+  return String(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+/* Card de debug: o que o jogo respondeu, sem passar pelo Jev. */
+function inputsCard(r){
+  if(!r.ok) return `<div class="dec inputs err"><div class="decHead">
+      <span class="decAgent">inputs</span><span class="muted">${esc(r.url||'')}</span>
+      <span class="spacer" style="flex:1"></span>
+      <span class="decAction" style="color:var(--red)">falhou</span>
+    </div><div class="inMeta">${esc(r.error||'')}</div></div>`;
+
+  const campos=r.fields||[];
+  const linhas=campos.map(f=>f.container
+    ? `<span class="inGrupo">${esc(f.path||'(raiz)')} — ${esc(f.type)}${
+        f.sample?': '+esc(f.sample):''}</span>`
+    : `<span class="inPath">${esc(f.path)}</span>
+       <span class="inVal${f.sample===''?' vazio':''}">${esc(f.sample===''?'—':f.sample)}</span>`
+  ).join('');
+
+  const meta=[
+    r.frame!=null?`frame ${r.frame}`:null,
+    `${r.latency_ms} ms`,
+    r.bytes?`${(r.bytes/1024).toFixed(1)} kB`:null,
+    `${campos.length} campo(s)`,
+    r.paused?'jogo pausado':null,
+  ].filter(Boolean).join(' · ');
+
+  const aviso=r.consumed_turn
+    ? `<div class="inMeta inAviso">⚠ só ${r.source} respondeu, e ele avança uma rodada
+       neste jogo. O que você está vendo já foi consumido.</div>` : '';
+
+  return `<div class="dec inputs"><div class="decHead">
+      <span class="decAgent">👁 inputs</span>
+      <span class="muted">${esc(r.game||'?')} · ${esc(r.source)}</span>
+      <span class="spacer" style="flex:1"></span>
+      <span class="decAction">${new Date().toLocaleTimeString()}</span>
+    </div>
+    <div class="inMeta">${esc(meta)}</div>
+    ${aviso}
+    <div class="inCampos">${linhas||'<span class="muted">estado vazio</span>'}</div>
+    <details class="inCru"><summary>JSON cru — exatamente o que o jogo mandou</summary>
+      <pre>${esc(JSON.stringify(r.state,null,2))}</pre></details>
+  </div>`;
+}
+
+/* joga qualquer card no topo do log, respeitando o limite e o texto de vazio */
+function aoLog(html){
+  const feed=$('#feed');
+  if(feed.querySelector('p')) feed.innerHTML='';
+  feed.insertAdjacentHTML('afterbegin',html);
+  while(feed.children.length>FEED_MAX) feed.lastElementChild.remove();
+  updateFeedCount();
+}
+
+const FEED_MAX=40;
+
+function clearFeed(){
+  /* limpa só o que está na tela; o log do servidor segue intacto e
+     lastSeq continua onde estava, então nada antigo volta sozinho */
+  $('#feed').innerHTML='<p class="muted">Limpo. As próximas decisões aparecem aqui.</p>';
+  updateFeedCount();
+}
+
+function updateFeedCount(){
+  const mostrando=$('#feed').querySelectorAll('.dec:not(.inputs)').length;
+  $('#feedCount').textContent=mostrando
+    ? `${mostrando} na tela · ${lastSeq} desde que o framework subiu`
+    : `${lastSeq} desde que o framework subiu`;
+}
+
+async function pollDecisions(){
+  try{
+    const data=await (await fetch(`/api/decisions?since=${lastSeq}`,{cache:'no-store'})).json();
+    if(!data.decisions.length) return;
+    lastSeq=data.seq;
+    const feed=$('#feed');
+    if(feed.querySelector('p')) feed.innerHTML='';
+    /* o servidor manda em ordem cronológica e cada card entra no topo, então
+       o último inserido — o mais novo do lote — termina no topo da lista */
+    for(const d of data.decisions){
+      feed.insertAdjacentHTML('afterbegin',decisionCard(d));
+      if(d.funnel&&(d.trace||[]).length)
+        ultimaLeitura[d.funnel]={trace:d.trace,action:d.action};
+    }
+    /* o grafo acende com a decisão mais recente do funil aberto: varro de trás */
+    for(let i=data.decisions.length-1;i>=0;i--){
+      const d=data.decisions[i];
+      if(d.funnel===funnelId){ highlightTrace(d.trace||[],d.action); break; }
+    }
+    while(feed.children.length>FEED_MAX) feed.lastElementChild.remove();
+    updateFeedCount();
+    atualizarTira();
+  }catch(e){ /* framework caiu; a próxima volta tenta de novo */ }
+}
+
+/* =====================================================================
+   Handshake + carregamento
+   ===================================================================== */
+async function refreshHandshake(){
+  try{
+    const hs=await (await fetch('/api/handshake',{cache:'no-store'})).json();
+    $('#svcTag').textContent=`${hs.service} v${hs.version}`;
+    const estadoLed='led '+(hs.jev.configured?'ok':'bad');
+    $('#led').className=estadoLed;
+    $('#ledFull').className=estadoLed;
+    $('#jevText').textContent=hs.jev.configured
+      ? `Jev pronto · ${hs.jev.model}` : 'sem TYPESAFE_API_KEY no .env';
+    applyDrive(hs.driver);
+    peers=hs.peers||[];
+    atualizarTira();
+    if(!$('#layout').classList.contains('encolhida'))
+      $('#peersResumo').textContent=resumoPeers();
+    $('#peers').innerHTML=peers.length
+      ? peers.map(p=>`<div class="peer"><b>${p.agent}</b>
+          <span class="muted">· ${p.decisions} decisão(ões) · há ${p.seconds_since_last}s</span>
+          <span class="acts">ações declaradas: ${(p.actions||[]).join(', ')}</span></div>`).join('')
+      : '<p class="muted">Nenhum jogo se apresentou ainda.</p>';
+    renderGraph();
+  }catch(e){ $('#jevText').textContent='framework fora do ar'; }
+}
+
+async function loadFunnels(){
+  funnels=(await (await fetch('/api/funnels',{cache:'no-store'})).json()).funnels||{};
+  const list=Object.values(funnels);
+  $('#funnelSel').innerHTML=list.map(f=>`<option value="${f.id}">${f.name}</option>`).join('');
+  /* mantém o funil lembrado; só cai no primeiro se ele foi apagado */
+  if(!funnels[funnelId]) funnelId=list[0]?.id??null;
+  $('#funnelSel').value=funnelId;
+  loadFunnel(funnelId);
+}
+
+function loadFunnel(id){
+  funnelId=id;
+  if(!funnels[id]){            /* nenhum funil disponível: não há o que abrir */
+    funnel=null; selectedNode=null; lastTrace=null;
+    renderGraph(); renderInspector();
+    return;
+  }
+  funnel=JSON.parse(JSON.stringify(funnels[id]));
+  selectedNode=null;
+  /* volta com a ultima leitura deste funil, se houver: abrir um funil parado
+     nao deve apagar os numeros que ele ja mostrou */
+  lastTrace=ultimaLeitura[id]?.trace||null;
+  /* abrir um funil é escolher com o que pilotar: sem dropdown separado */
+  drive('funnel',id);
+  /* o agente pode ter mudado, e com ele as ações disponíveis */
+  /* restaurar um funil embutido devolve o original; um funil seu some de vez */
+  const btn=$('#revertFunnel');
+  btn.textContent=funnel.builtin?'↺ Restaurar':'🗑 Excluir';
+  btn.title=funnel.builtin
+    ? 'descarta suas alterações e volta ao funil que vem no código'
+    : 'apaga este funil de vez';
+  btn.disabled=funnel.builtin&&!funnel.saved;
+  renderGraph(); renderInspector();
+}
+
+/* =====================================================================
+   Contrato do jogo — o que dá para ler e o que dá para mandar.
+   É a referência de quem está desenhando o funil.
+   ===================================================================== */
+
+let contract=null;
+let ultimoCampoTexto=null;   /* textarea onde colar um caminho clicado */
+
+function lembrarTextarea(el){ ultimoCampoTexto=el; }
+
+function colarCaminho(caminho){
+  const alvo=ultimoCampoTexto;
+  if(!alvo||!document.body.contains(alvo)){
+    $('#contractHint').textContent='clique antes numa instrução ou descrição, depois no campo';
+    return;
+  }
+  const ini=alvo.selectionStart??alvo.value.length;
+  const fim=alvo.selectionEnd??ini;
+  alvo.value=alvo.value.slice(0,ini)+caminho+alvo.value.slice(fim);
+  const pos=ini+caminho.length;
+  alvo.setSelectionRange(pos,pos);
+  alvo.focus();
+  alvo.dispatchEvent(new Event('input',{bubbles:true}));
+  $('#contractHint').textContent=`"${caminho}" colado.`;
+}
+
+function renderContract(){
+  const meta=$('#contractMeta');
+  if(!contract||!contract.ok){
+    meta.textContent=contract?.error?'⚠ não consegui ler':'—';
+    $('#contractActions').innerHTML='<span class="muted">—</span>';
+    $('#contractFields').innerHTML=`<span class="muted">${contract?.error||'sem contrato'}</span>`;
+    return;
+  }
+  meta.textContent=`${contract.game} · ${contract.url} · via ${contract.source}`;
+  $('#contractActions').innerHTML=contract.actions.map(a=>
+    `<span class="chip" data-action="${a.id}"
+           title="arraste até uma resposta do funil para ligar">${a.id}${
+       a.label&&a.label!==a.id?`<small>${a.label}</small>`:''}</span>`).join('');
+  $('#contractFields').innerHTML=contract.fields.map(f=>
+    `<div class="fld${f.container?' container':''}" data-path="${f.path}">
+       <span class="p">${f.path}</span>
+       <span class="t">${f.type}</span>
+       <span class="v">${f.sample||''}</span>
+     </div>`).join('');
+  $('#contractFields').querySelectorAll('.fld:not(.container)').forEach(el=>
+    el.addEventListener('click',()=>colarCaminho(el.dataset.path)));
+  renderGraph();   /* as pílulas de ação passam a vir do contrato */
+}
+
+async function carregarContrato(url){
+  $('#contractMeta').textContent='lendo…';
+  try{
+    const alvo=url?`?url=${encodeURIComponent(url)}`:'';
+    contract=await (await fetch(`/api/contract${alvo}`,{cache:'no-store'})).json();
+  }catch(e){ contract={ok:false,error:String(e)}; }
+  renderContract();
+}
+
+$('#contractReload').addEventListener('click',()=>carregarContrato($('#peerUrl').value));
+function aplicarContrato(oculto){
+  $('#contractBody').hidden=oculto;
+  $('#contractToggle').textContent=oculto?'mostrar':'ocultar';
+  $('#contractToggle').title=oculto?'mostrar o contrato':'ocultar o contrato';
+}
+
+$('#contractToggle').addEventListener('click',()=>{
+  const novo=!$('#contractBody').hidden;
+  aplicarContrato(novo);
+  salvarLayout({contratoOculto:novo});
+});
+
+/* =====================================================================
+   Criar funil do zero
+   ===================================================================== */
+
+function slug(texto){
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,50);
+}
+
+function idLivre(base){
+  let id=base||'funil', n=2;
+  while(funnels[id]) id=`${base}_${n++}`;
+  return id;
+}
+
+function abrirNovoFunil(){
+  const box=$('#newFunnelBox');
+  box.hidden=false;
+  /* sugere os agentes que já apareceram: peers conectados + funis existentes */
+  const agentes=new Set();
+  peers.forEach(p=>agentes.add(p.agent));
+  Object.values(funnels).forEach(f=>{ if(f.game) agentes.add(f.game); });
+  $('#nfGames').innerHTML=[...agentes].map(a=>`<option value="${a}">`).join('');
+  preencherTemplates();
+  $('#nfName').value=''; $('#nfGame').value=''; $('#nfHint').textContent='';
+  $('#nfName').focus();
+}
+
+function fecharNovoFunil(){ $('#newFunnelBox').hidden=true; }
+
+/* Ou nasce vazio de verdade, ou nasce com um exemplo que já faz sentido.
+   Meio-termo com texto de placeholder só dá trabalho de apagar. */
+const TEMPLATES={
+  vazio:{
+    rotulo:'Vazio — eu monto do zero',
+    dica:'Nenhum nó. Crie o primeiro com + nó e adicione as perguntas dentro dele.',
+    entry:'', nodes:()=>({}),
+  },
+  choice:{
+    rotulo:'Exemplo choice — escolher entre opções',
+    dica:'Um nó com uma pergunta que ramifica em duas saídas.',
+    entry:'decisao',
+    nodes:()=>({decisao:normalizeNode({
+      label:'Qual caminho seguir',
+      questions:{caminho:{type:'choice',label:'Caminho',
+        instructions:'Leia o estado e escolha o caminho mais adequado agora.',
+        threshold:0.5,
+        criteria:{seguro:'Quando a situação está sob controle e dá para manter o rumo.',
+                  arriscado:'Quando vale arriscar por um ganho maior.'}}},
+      outputs:{caminho:{seguro:{to:null,emit:null},arriscado:{to:null,emit:null}}},
+      min_confidence:0, fallback:null, x:40, y:120,
+    })}),
+  },
+  score_com_leitura:{
+    rotulo:'Exemplo score + leitura — duas perguntas, um request',
+    dica:'Uma escala ramifica o nó; uma pergunta noul viaja junto só como leitura.',
+    entry:'intensidade',
+    nodes:()=>({intensidade:normalizeNode({
+      label:'Avaliar a situação',
+      questions:{
+        intensidade:{type:'score',label:'Intensidade',
+          instructions:'Avalie a intensidade da situação na escala.',threshold:0.5,
+          criteria:['Tranquilo, nada urgente','Requer atenção','Crítico, precisa agir agora']},
+        pressa:{type:'noul',label:'Tem pressa',
+          instructions:'A situação transmite urgência ou sensibilidade ao tempo.',
+          threshold:0.6,criteria:null},
+      },
+      outputs:{}, min_confidence:0, fallback:null, x:40, y:120,
+    })}),
+  },
+  dois:{
+    rotulo:'Exemplo em 2 níveis — triagem, depois ação',
+    dica:'Dois nós já ligados: um noul avalia a urgência e passa para um choice.',
+    entry:'triagem',
+    nodes:()=>({
+      triagem:normalizeNode({
+        label:'É urgente?',
+        questions:{urgente:{type:'noul',label:'É urgente',
+          instructions:'A situação transmite urgência ou sensibilidade ao tempo.',
+          threshold:0.6,criteria:null}},
+        outputs:{urgente:{sim:{to:'acao',emit:null},nao:{to:'acao',emit:null}}},
+        min_confidence:0, fallback:null, x:40, y:60,
+      }),
+      acao:normalizeNode({
+        label:'O que fazer',
+        questions:{oque:{type:'choice',label:'O que fazer',
+          instructions:'A urgência já foi avaliada. Escolha o que fazer agora.',threshold:0.5,
+          criteria:{agir:'Quando a ação direta resolve o problema.',
+                    esperar:'Quando esperar é mais seguro que agir.'}}},
+        outputs:{}, min_confidence:0, fallback:null, x:420, y:170,
+      }),
+    }),
+  },
+};
+
+function preencherTemplates(){
+  $('#nfTemplate').innerHTML=Object.entries(TEMPLATES)
+    .map(([k,t])=>`<option value="${k}">${t.rotulo}</option>`).join('');
+  mostrarDicaTemplate();
+}
+function mostrarDicaTemplate(){
+  $('#nfTemplateDica').textContent=TEMPLATES[$('#nfTemplate').value]?.dica||'';
+}
+
+async function criarFunil(){
+  const nome=$('#nfName').value.trim();
+  if(!nome){ $('#nfHint').textContent='dê um nome ao funil'; $('#nfName').focus(); return; }
+  const tpl=TEMPLATES[$('#nfTemplate').value]||TEMPLATES.vazio;
+  const novo={
+    id:idLivre(slug(nome)), name:nome, game:$('#nfGame').value.trim(),
+    entry:tpl.entry, nodes:tpl.nodes(),
+  };
+  $('#nfHint').textContent='salvando…';
+  try{
+    const r=await (await fetch('/api/funnels',{method:'POST',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify(novo)})).json();
+    if(!r.ok){ $('#nfHint').textContent='⚠ '+(r.error||'falhou'); return; }
+    fecharNovoFunil();
+    funnelId=r.funnel.id;
+    await loadFunnels();
+    if(funnel.entry) selectNode(funnel.entry);
+    $('#conn').textContent=`funil "${nome}" criado`;
+  }catch(e){ $('#nfHint').textContent='⚠ '+e; }
+}
+
+$('#nfTemplate').addEventListener('change',mostrarDicaTemplate);
+
+$('#newFunnel').addEventListener('click',abrirNovoFunil);
+$('#nfCancel').addEventListener('click',fecharNovoFunil);
+$('#nfCreate').addEventListener('click',criarFunil);
+$('#nfName').addEventListener('keydown',e=>{ if(e.key==='Enter') criarFunil(); });
+$('#nfGame').addEventListener('keydown',e=>{ if(e.key==='Enter') criarFunil(); });
+
+$('#funnelSel').addEventListener('change',e=>loadFunnel(e.target.value));
+$('#addNode').addEventListener('click',()=>{
+  /* o nó nasce vazio: as perguntas você adiciona no inspector, uma a uma */
+  let n=1; while(funnel.nodes['no_'+n]) n++;
+  const id='no_'+n;
+  const node=noVazio();
+  node.label='Novo nó '+n;
+  node.x=40+((Object.keys(funnel.nodes).length*30)%200);
+  node.y=40+((Object.keys(funnel.nodes).length*70)%320);
+  funnel.nodes[id]=node;
+  if(!funnel.entry) funnel.entry=id;
+  renderGraph(); selectNode(id);
+});
+$('#saveFunnel').addEventListener('click',async()=>{
+  /* rascunho salva direto: a ideia é poder parar no meio e voltar depois */
+  const problems=validate();
+  const r=await (await fetch('/api/funnels',{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify(funnel)})).json();
+  if(r.ok){
+    funnels[r.funnel.id]=r.funnel;
+    mostrarSujo();
+    $('#conn').textContent=problems.length
+      ? `rascunho salvo · ${problems.length} pendência(s)`
+      : 'funil salvo e pronto para pilotar';
+  }else $('#conn').textContent='⚠ '+(r.error||'falha ao salvar');
+});
+/* dois toques em vez de caixa do navegador: o primeiro arma, o segundo executa */
+let armadoParaApagar=null;
+function desarmar(){
+  clearTimeout(armadoParaApagar);
+  armadoParaApagar=null;
+  const btn=$('#revertFunnel');
+  btn.classList.remove('confirmando');
+  btn.textContent=funnel?.builtin?'↺ Restaurar':'🗑 Excluir';
+}
+$('#revertFunnel').addEventListener('click',async()=>{
+  const btn=$('#revertFunnel');
+  if(!armadoParaApagar){
+    btn.classList.add('confirmando');
+    btn.textContent=funnel.builtin?'confirmar restauração?':'confirmar exclusão?';
+    armadoParaApagar=setTimeout(desarmar,4000);
+    return;
+  }
+  desarmar();
+  await fetch('/api/funnels/delete',{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({id:funnelId})});
+  const era=funnel.builtin;
+  funnelId=null;
+  await loadFunnels();
+  $('#conn').textContent=era?'funil restaurado':'funil apagado';
+});
+/* ---- pilotagem ---- */
+let driveHzFocus=false;
+
+async function drive(cmd,value){
+  try{
+    const r=await (await fetch('/api/drive',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({cmd,value})})).json();
+    applyDrive(r);
+    return r;
+  }catch(e){ $('#conn').textContent='⚠ framework fora'; }
+}
+
+/* assinatura do que importa para rodar: usada para saber se o que está aberto
+   no editor difere do que o servidor vai pilotar */
+function assinaturaFunil(f){
+  if(!f) return '';
+  const nos={};
+  for(const [nid,n] of Object.entries(f.nodes||{})){
+    nos[nid]={label:n.label,
+      min_confidence:n.min_confidence||0,fallback:n.fallback||null,
+      questions:n.questions||{},outputs:n.outputs||{}};
+  }
+  return JSON.stringify({name:f.name,game:f.game,entry:f.entry,nodes:nos});
+}
+
+function mostrarSujo(){
+  const salvo=funnels[funnelId];
+  const sujo=!!funnel&&!!salvo&&assinaturaFunil(funnel)!==assinaturaFunil(salvo);
+  const caixa=$('#driveSujo');
+  caixa.hidden=!sujo;
+  if(sujo) caixa.innerHTML=
+    `Você editou este funil e ainda não salvou — o piloto roda a versão salva.
+     <button id="salvarDoPiloto" class="ok">💾 Salvar agora</button>`;
+  if(sujo) $('#salvarDoPiloto').addEventListener('click',()=>$('#saveFunnel').click());
+}
+
+function applyDrive(d){
+  if(!d) return;
+  $('#driveTarget').textContent=d.target||'';
+  $('#driveRun').textContent=d.running?'⏸ Parar':'▶ Pilotar';
+  $('#driveRun').classList.toggle('on',!!d.running);
+  $('#driveStep').disabled=!!d.running||!!d.busy;
+  if(!driveHzFocus&&d.hz!=null) $('#driveHz').value=d.hz;
+  const nome=funnels[d.funnel]?.name||d.funnel||'—';
+  $('#driveFunnelNome').innerHTML=`com <b>${nome}</b>`;
+  mostrarSujo();
+  const bits=[];
+  if(d.error) bits.push(`<span style="color:var(--red)">⚠ ${d.error}</span>`);
+  else if(d.busy) bits.push('decidindo…');
+  else bits.push(d.running?'pilotando':'parado');
+  bits.push(`${d.frames||0} frame(s)`);
+  if(d.last){
+    bits.push(`último: <b style="color:var(--green)">${d.last.action}</b>
+               no frame ${d.last.frame} · ${d.last.round_trip_ms} ms`);
+    if(d.last.stale) bits.push('<span class="staleTag">frame velho</span>');
+  }
+  $('#driveStatus').innerHTML=bits.join(' · ');
+}
+
+
+$('#driveRun').addEventListener('click',async()=>{
+  const st=await (await fetch('/api/drive',{cache:'no-store'})).json();
+  drive('run',!st.running);
+});
+$('#driveStep').addEventListener('click',()=>drive('step'));
+$('#driveHz').addEventListener('focus',()=>driveHzFocus=true);
+$('#driveHz').addEventListener('blur',()=>driveHzFocus=false);
+$('#driveHz').addEventListener('change',e=>drive('hz',e.target.value));
+$('#peerUrl').addEventListener('change',e=>drive('target',e.target.value));
+
+$('#feedClear').addEventListener('click',clearFeed);
+
+/* Ler inputs: vai no jogo e mostra no log o estado cru, sem gastar Jev.
+   Serve para conferir nome de campo na hora de montar uma pergunta. */
+$('#lerInputs').addEventListener('click',async()=>{
+  const botao=$('#lerInputs');
+  botao.disabled=true; botao.textContent='lendo…';
+  try{
+    const r=await (await fetch('/api/peers/inputs',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({url:$('#peerUrl').value})})).json();
+    aoLog(inputsCard(r));
+    $('#conn').textContent=r.ok
+      ? `👁 ${r.game||'?'} · ${r.fields.length} campo(s) · ${r.latency_ms} ms`
+      : '⚠ '+r.error;
+  }catch(e){
+    aoLog(inputsCard({ok:false,url:$('#peerUrl').value,
+                      error:'framework não respondeu: '+e.message}));
+  }finally{
+    botao.disabled=false; botao.textContent='👁 ler inputs';
+  }
+});
+
+$('#probe').addEventListener('click',async()=>{
+  $('#conn').textContent='apertando a mão…';
+  const r=await (await fetch('/api/peers/probe',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({url:$('#peerUrl').value})})).json();
+  if(r.ok){
+    const rem=r.remote;
+    $('#conn').textContent=`✓ ${rem.service} v${rem.version} · ${r.latency_ms} ms`;
+    await drive('target',$('#peerUrl').value);
+    carregarContrato($('#peerUrl').value);
+    $('#peers').insertAdjacentHTML('afterbegin',
+      `<div class="peer"><b>${rem.service}</b> <span class="muted">· ${r.url}</span>
+       <span class="acts">jogos: ${(rem.games||[]).map(g=>g.id).join(', ')}</span></div>`);
+  }else $('#conn').textContent='⚠ '+r.error;
+});
+/* =====================================================================
+   Layout: encolher painel e arrastar a altura da edição.
+   Fica guardado no navegador — é conveniência de quem está olhando.
+   ===================================================================== */
+
+const LAYOUT_KEY='jev.arena.layout';
+
+function lerLayout(){
+  try{ return JSON.parse(localStorage.getItem(LAYOUT_KEY))||{}; }
+  catch(e){ return {}; }
+}
+function salvarLayout(mudanca){
+  try{ localStorage.setItem(LAYOUT_KEY,JSON.stringify({...lerLayout(),...mudanca})); }
+  catch(e){ /* navegador sem storage: o layout só não persiste */ }
+}
+
+function aplicarLateral(encolhida){
+  $('#layout').classList.toggle('encolhida',encolhida);
+  const btn=$('#lateralToggle');
+  btn.textContent=encolhida?'«':'»';
+  btn.title=encolhida?'abrir o monitor':'encolher o monitor';
+  $('#peersResumo').textContent=encolhida?'':resumoPeers();
+  atualizarTira();
+  /* a coluna do funil mudou de largura: os fios precisam ser refeitos */
+  requestAnimationFrame(()=>{ renderGraph(); });
+}
+
+function atualizarTira(){
+  const led=$('#ledFull').className.includes('ok');
+  $('#ledMini').className='led '+(led?'ok':'bad');
+  $('#tiraCount').textContent=lastSeq?`${lastSeq} decisões`:'';
+}
+function resumoPeers(){
+  const jev=$('#ledFull').classList.contains('ok')?'Jev ok':'Jev sem chave';
+  return peers.length?`${jev} · ${peers.length} jogo(s)`:`${jev} · nenhum jogo`;
+}
+$('#lateralToggle').addEventListener('click',()=>{
+  const novo=!$('#layout').classList.contains('encolhida');
+  aplicarLateral(novo);
+  salvarLayout({lateralEncolhida:novo});
+});
+
+const grip=$('#inspectorGrip'), inspector=$('#inspector');
+const ALTURA_MIN=90;
+function alturaMax(){ return Math.max(ALTURA_MIN, window.innerHeight-260); }
+function aplicarAltura(px){
+  const valor=Math.max(ALTURA_MIN,Math.min(alturaMax(),Math.round(px)));
+  inspector.style.height=valor+'px';
+  drawWires();
+  return valor;
+}
+
+let puxando=null;
+grip.addEventListener('pointerdown',e=>{
+  puxando={y:e.clientY,h:inspector.offsetHeight};
+  grip.setPointerCapture(e.pointerId);
+  grip.classList.add('arrastando');
+  e.preventDefault();
+});
+grip.addEventListener('pointermove',e=>{
+  if(!puxando) return;
+  /* arrastar para cima cresce a edição, porque ela fica embaixo do grafo */
+  aplicarAltura(puxando.h-(e.clientY-puxando.y));
+});
+grip.addEventListener('pointerup',()=>{
+  if(!puxando) return;
+  puxando=null;
+  grip.classList.remove('arrastando');
+  salvarLayout({inspectorAltura:inspector.offsetHeight});
+});
+/* duplo clique no pegador alterna entre recolhido e a altura padrão */
+grip.addEventListener('dblclick',()=>{
+  const atual=inspector.offsetHeight;
+  salvarLayout({inspectorAltura:aplicarAltura(atual<=ALTURA_MIN+4?300:ALTURA_MIN)});
+});
+
+addEventListener('resize',()=>{
+  aplicarAltura(inspector.offsetHeight);   /* reencaixa se a janela encolheu */
+  drawWires();
+});
+
+(async function start(){
+  /* layout primeiro, para a página não dar um salto depois de carregar;
+     drawWires aguenta ser chamado sem funil ainda */
+  const layout=lerLayout();
+  recolhidos=new Set(layout.recolhidos||[]);
+  aplicarLateral(!!layout.lateralEncolhida);
+  aplicarContrato(!!layout.contratoOculto);
+  if(layout.inspectorAltura) aplicarAltura(layout.inspectorAltura);
+
+  /* o servidor lembra com qual funil você estava; sem isso a página abriria
+     sempre no primeiro da lista e perderia onde você parou */
+  try{
+    const d=await (await fetch('/api/drive',{cache:'no-store'})).json();
+    if(d.funnel&&d.funnel!=='auto') funnelId=d.funnel;
+  }catch(e){ /* framework fora: cai no primeiro da lista, como antes */ }
+
+  await loadFunnels();
+  await refreshHandshake();
+  await carregarContrato();
+  setInterval(pollDecisions,500);
+  setInterval(refreshHandshake,1500);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# Nenhuma dependência. Os dois servidores usam só a biblioteca padrão do
+# Python 3.9+ — http.server, urllib, json, threading.
+#
+# Isso é de propósito: dá para clonar e rodar sem instalar nada, sem venv e
+# sem esperar download. Se você for propor uma dependência nova, vale abrir
+# uma issue antes — o custo de "clone e rode" é alto para quem está só
+# querendo experimentar.
+#
+# O arquivo existe porque várias ferramentas procuram por ele.
+#
+#     pip install -r requirements.txt     # não instala nada, e tudo bem

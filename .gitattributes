@@ -1,0 +1,24 @@
+# Fim de linha normalizado no repositório, nativo no disco de cada um.
+* text=auto eol=lf
+
+# PowerShell precisa de CRLF. E os .ps1 daqui têm BOM UTF-8 de propósito:
+# sem ele, o PowerShell 5.1 lê os acentos como ANSI e a tela vira mojibake.
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Shell precisa de LF mesmo no Windows.
+*.sh text eol=lf
+
+# Binários: git não deve tentar converter nada.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.mp3 binary
+*.ogg binary
+*.wav binary
