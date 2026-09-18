@@ -9,6 +9,8 @@ possível vira uma saída que você liga em outro nó ou numa ação do jogo. En
 roda, os fios mostram a probabilidade de cada resposta em verde e vermelho, e dá
 para ver exatamente por onde a decisão passou.
 
+![A bancada do Jev Studio: o funil à esquerda com as probabilidades nos fios, e o monitor de decisões à direita](docs/jevstudio.png)
+
 ```
 ┌─────────────────────┐   pergunta         ┌──────────────────┐
 │  framework  :8000   │ ─────────────────> │   API do Jev     │
