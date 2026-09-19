@@ -14,6 +14,7 @@ sao todos apenas clientes.
 """
 import json
 import os
+import math
 import random
 import sys
 import threading
@@ -469,7 +470,172 @@ class SupportGame:
                  "tone": "bad" if self.atendidos and pct < 70 else ""}]
 
 
-GAMES = {g.id: g for g in (VitaminGame(), RaceGame(), SupportGame())}
+class StreetFootballGame:
+    """Nivel 1 do racha: so o jogador, a bola e o gol.
+
+    Sem carro passando, sem cachorro levando a bola. A missao inteira e:
+    achar a bola, levar ate a pequena area e chutar de la. Fez gol, nasce
+    outra bola em outro canto e recomeca.
+
+    O campo e 120x80 em unidades proprias — numero redondo le melhor no
+    estado do que pixel de tela, e quem escreve a pergunta para o Jev vai
+    falar desses numeros.
+    """
+
+    id, name = "street_football", "Futebol de rua"
+    funnel = "futebol_gol"
+    actions = [{"id": "up", "label": "\u2191 Cima"}, {"id": "down", "label": "\u2193 Baixo"},
+               {"id": "left", "label": "\u2190 Esquerda"}, {"id": "right", "label": "\u2192 Direita"},
+               {"id": "chutar", "label": "\u26bd Chutar"}]
+
+    LARGURA, ALTURA = 120.0, 80.0
+    GOL_TOPO, GOL_BASE = 30.0, 50.0        # os dois chinelos
+    AREA_X = 100.0                          # a pequena area comeca aqui
+    AREA_TOPO, AREA_BASE = 24.0, 56.0
+    VELOCIDADE = 26.0                       # unidades por segundo
+    RAIO_CONTROLE = 4.0                     # perto assim, a bola e dele
+    PASSO = 0.5                             # segundos de mundo por acao, no passo a passo
+
+    DIRECOES = {"up": (0.0, -1.0), "down": (0.0, 1.0),
+                "left": (-1.0, 0.0), "right": (1.0, 0.0)}
+
+    def reset(self):
+        self.gols = 0
+        self.chutes_perdidos = 0
+        self.passos = 0
+        self.rumo = None                    # ultima direcao mandada
+        self.aviso = ""                     # o que acabou de acontecer, para a tela
+        self.aviso_ate = 0.0
+        self.player = [20.0, self.ALTURA / 2]
+        self._nova_bola()
+
+    # ---- bola ----
+    def _nova_bola(self):
+        """Longe do gol e longe do jogador: senao a rodada acaba sem jogo."""
+        for _ in range(40):
+            x = random.uniform(10, self.AREA_X - 10)
+            y = random.uniform(8, self.ALTURA - 8)
+            if math.dist((x, y), self.player) > 25:
+                self.bola = [x, y]
+                return
+        self.bola = [random.uniform(10, 40), random.uniform(8, self.ALTURA - 8)]
+
+    def _tem_a_bola(self):
+        return math.dist(self.player, self.bola) <= self.RAIO_CONTROLE
+
+    def _na_area(self):
+        return (self.player[0] >= self.AREA_X
+                and self.AREA_TOPO <= self.player[1] <= self.AREA_BASE)
+
+    def _falar(self, texto):
+        self.aviso = texto
+        self.aviso_ate = time.time() + 1.6
+
+    # ---- tempo ----
+    def tick(self, dt):
+        if not self.rumo:
+            return
+        dx, dy = self.DIRECOES[self.rumo]
+        andar = self.VELOCIDADE * dt
+        self.player[0] = max(2.0, min(self.LARGURA - 2.0, self.player[0] + dx * andar))
+        self.player[1] = max(2.0, min(self.ALTURA - 2.0, self.player[1] + dy * andar))
+        # a bola dominada anda junto, um passo a frente do jogador
+        if self._tem_a_bola():
+            self.bola[0] = max(1.0, min(self.LARGURA - 1.0, self.player[0] + dx * 2.2))
+            self.bola[1] = max(1.0, min(self.ALTURA - 1.0, self.player[1] + dy * 2.2))
+
+    def step(self):
+        self.tick(self.PASSO)
+
+    # ---- acoes ----
+    def apply(self, action, result=None):
+        self.passos += 1
+        if action == "chutar":
+            self._chutar()
+            return
+        if action in self.DIRECOES:
+            self.rumo = action
+
+    def _chutar(self):
+        if not self._tem_a_bola():
+            self._falar("chutou o vento")
+            self.chutes_perdidos += 1
+            return
+        if self._na_area():
+            self.gols += 1
+            self._falar("GOL!")
+            self.rumo = None
+            self.player = [20.0, self.ALTURA / 2]
+            self._nova_bola()
+            return
+        # chute de longe: a bola vai para longe e ele tem que buscar de novo
+        self.chutes_perdidos += 1
+        self._falar("chutou de longe, foi para fora")
+        self.rumo = None
+        self._nova_bola()
+
+    # ---- leitura ----
+    def _rumo_ate(self, alvo):
+        """Em que direcao esta o alvo, no vocabulario das acoes."""
+        dx, dy = alvo[0] - self.player[0], alvo[1] - self.player[1]
+        if abs(dx) < 1.5 and abs(dy) < 1.5:
+            return "em cima"
+        if abs(dx) >= abs(dy):
+            return "right" if dx > 0 else "left"
+        return "down" if dy > 0 else "up"
+
+    def state(self):
+        com_bola = self._tem_a_bola()
+        gol = [self.LARGURA, (self.GOL_TOPO + self.GOL_BASE) / 2]
+        return {
+            "game": self.id,
+            "objective": ("Pegar a bola, levar ate a pequena area do gol e chutar de dentro "
+                          "dela. Chute de fora da area nao vale e manda a bola para longe."),
+            "field": {"width": self.LARGURA, "height": self.ALTURA,
+                      "x_cresce": "para a direita, na direcao do gol",
+                      "y_cresce": "para baixo"},
+            "goal": {"x": self.LARGURA, "y_top": self.GOL_TOPO, "y_bottom": self.GOL_BASE},
+            "small_box": {"x_min": self.AREA_X, "y_top": self.AREA_TOPO,
+                          "y_bottom": self.AREA_BASE,
+                          "nota": "so vale gol chutando de dentro desta caixa"},
+            "player": {"x": round(self.player[0], 1), "y": round(self.player[1], 1),
+                       "andando_para": self.rumo},
+            "ball": {"x": round(self.bola[0], 1), "y": round(self.bola[1], 1)},
+            "com_a_bola": com_bola,
+            "dentro_da_pequena_area": self._na_area(),
+            "pronto_para_chutar": com_bola and self._na_area(),
+            "bola": {"distancia": round(math.dist(self.player, self.bola), 1),
+                     "direcao": self._rumo_ate(self.bola)},
+            "pequena_area": {"distancia": round(math.dist(self.player, [self.AREA_X, gol[1]]), 1),
+                             "direcao": self._rumo_ate([self.AREA_X + 8, gol[1]])},
+            "gols": self.gols,
+            "chutes_perdidos": self.chutes_perdidos,
+        }
+
+    def view(self):
+        return {
+            "width": self.LARGURA, "height": self.ALTURA,
+            "goal": {"top": self.GOL_TOPO, "bottom": self.GOL_BASE},
+            "box": {"x": self.AREA_X, "top": self.AREA_TOPO, "bottom": self.AREA_BASE},
+            "player": {"x": self.player[0], "y": self.player[1], "rumo": self.rumo},
+            "ball": {"x": self.bola[0], "y": self.bola[1]},
+            "com_a_bola": self._tem_a_bola(),
+            "na_area": self._na_area(),
+            "gols": self.gols,
+            "aviso": self.aviso if time.time() < self.aviso_ate else "",
+        }
+
+    def stats(self):
+        return [{"label": "gols", "value": self.gols},
+                {"label": "chutes perdidos", "value": self.chutes_perdidos,
+                 "tone": "bad" if self.chutes_perdidos else ""},
+                {"label": "passos", "value": self.passos},
+                {"label": "bola", "value": "dominada" if self._tem_a_bola() else "solta",
+                 "tone": "" if self._tem_a_bola() else "warn"}]
+
+
+GAMES = {g.id: g for g in (VitaminGame(), RaceGame(), SupportGame(),
+                           StreetFootballGame())}
 
 
 def _load_session():

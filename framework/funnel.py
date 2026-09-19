@@ -302,6 +302,299 @@ DEFAULT_FUNNELS = {
             },
         },
     },
+    "futebol_gol": {
+        "id": "futebol_gol",
+        "name": "Futebol: buscar, levar e chutar",
+        "game": "street_football",
+        "entry": "jogada",
+        "nodes": {
+            "jogada": {
+                "label": "A jogada agora",
+                # Duas perguntas no mesmo request. A ordem importa: a primeira
+                # resposta que cair numa saida ligada decide. Entao o "chutar
+                # agora" vem antes do rumo — quando ele diz sim, o rumo vira
+                # so leitura e nem chega a acionar nada.
+                "questions": {
+                    "chutar_agora": {
+                        "type": "noul",
+                        "label": "Chutar agora",
+                        "instructions": (
+                            "O jogador esta com a bola dominada E dentro da pequena area "
+                            "(small_box), ou seja, `pronto_para_chutar` e verdadeiro. "
+                            "Responda alto so quando as duas coisas valem ao mesmo tempo: "
+                            "chutar de fora da area manda a bola para longe e perde a jogada."
+                        ),
+                        "threshold": 0.6,
+                    },
+                    "rumo": {
+                        "type": "choice",
+                        "label": "Para onde correr",
+                        "instructions": (
+                            "Para que lado o jogador deve correr neste frame. Se ele ainda "
+                            "nao esta com a bola (`com_a_bola` falso), va na direcao da bola, "
+                            "em `bola.direcao`. Se ja esta com a bola, leve-a para a pequena "
+                            "area do gol, em `pequena_area.direcao`. Lembre que x cresce para "
+                            "a direita (onde fica o gol) e y cresce para baixo. Os campos "
+                            "`distancia_x` e `distancia_y` dizem quanto falta em cada eixo, "
+                            "com sinal: positivo e para a direita e para baixo. As diagonais "
+                            "existem e sao quase sempre melhores: andar so em cruz faz o "
+                            "caminho virar escada. Quando os dois eixos tem sobra parecida, a "
+                            "resposta e uma diagonal. Se o campo `direcao` que voce leu ja e "
+                            "uma diagonal, responda exatamente ela."
+                        ),
+                        "criteria": {
+                            "up": "So para cima: o alvo esta quase na mesma coluna, com y menor",
+                            "down": "So para baixo: o alvo esta quase na mesma coluna, com y maior",
+                            "left": "So para a esquerda: o alvo esta quase na mesma linha, com x menor",
+                            "right": "So para a direita, na direcao do gol, quase na mesma linha",
+                            "up_left": "Diagonal: o alvo esta acima E a esquerda",
+                            "up_right": "Diagonal: o alvo esta acima E a direita",
+                            "down_left": "Diagonal: o alvo esta abaixo E a esquerda",
+                            "down_right": "Diagonal: o alvo esta abaixo E a direita",
+                        },
+                    },
+                },
+                "outputs": {
+                    "chutar_agora": {"sim": {"to": None, "emit": "chutar"},
+                                     "nao": {"to": None, "emit": None}},
+                    "rumo": {"up": {"to": None, "emit": "up"},
+                             "down": {"to": None, "emit": "down"},
+                             "left": {"to": None, "emit": "left"},
+                             "right": {"to": None, "emit": "right"},
+                             "up_left": {"to": None, "emit": "up_left"},
+                             "up_right": {"to": None, "emit": "up_right"},
+                             "down_left": {"to": None, "emit": "down_left"},
+                             "down_right": {"to": None, "emit": "down_right"}},
+                },
+                "min_confidence": 0,
+                "fallback": None,
+                "x": 40, "y": 120,
+            },
+        },
+    },
+    # ----------------------------------------------------------------- duelo
+    # Duas cadeiras, dois cerebros. Cada funil declara a cadeira que joga; com o
+    # driver em "auto", quem diz de quem e a vez e o jogo.
+    "racha_azul": {
+        "id": "racha_azul",
+        "name": "Racha azul: atacante direto",
+        "game": "street_football",
+        "seat": "azul_1",
+        "entry": "jogada",
+        "nodes": {
+            "jogada": {
+                "label": "O lance do azul",
+                # Um no so: le tudo de uma vez e responde. O "chutar agora" vem
+                # antes do rumo, entao quando ele diz sim o rumo vira leitura.
+                "questions": {
+                    "chutar_agora": {
+                        "type": "noul",
+                        "label": "Chutar agora",
+                        "instructions": (
+                            "Responda alto so quando `pronto_para_chutar` for verdadeiro. "
+                            "Ele ja soma as duas condicoes: ter a bola ao alcance e estar "
+                            "DENTRO da pequena area (`na_area_do_gol`). Chute de fora da "
+                            "area e anulado e entrega a bola ao adversario, entao nao "
+                            "adianta tentar o chutao de longe."
+                        ),
+                        "threshold": 0.55,
+                    },
+                    "rumo": {
+                        "type": "choice",
+                        "label": "Para onde correr",
+                        "instructions": (
+                            "Este jogador e direto: quer chegar no gol. Se nao tem a bola "
+                            "(`com_a_bola` falso), va buscar em `bola.direcao`. Se tem, leve "
+                            "para `meu_gol.direcao` e siga ate estar dentro da area. "
+                            "MAS os corpos se esbarram: voce NAO atravessa o adversario. Se `adversarios[0].encostando` for verdadeiro, ir reto e ficar preso nele; nesse caso escolha a diagonal que contorna, desviando pelo lado oposto ao `distancia_y` dele. " + 'Os campos `distancia_x` e `distancia_y` dizem quanto falta em cada eixo, com sinal: positivo e para a direita e para baixo. As diagonais quase sempre andam menos que a escada de dois comandos retos.'
+                        ),
+                        "criteria": {
+                            "up": "So para cima: o alvo esta quase na mesma coluna, com y menor",
+                            "down": "So para baixo: o alvo esta quase na mesma coluna, com y maior",
+                            "left": "So para a esquerda: o alvo esta quase na mesma linha, com x menor",
+                            "right": "So para a direita: o alvo esta quase na mesma linha, com x maior",
+                            "up_left": "Diagonal: o alvo esta acima E a esquerda",
+                            "up_right": "Diagonal: o alvo esta acima E a direita",
+                            "down_left": "Diagonal: o alvo esta abaixo E a esquerda",
+                            "down_right": "Diagonal: o alvo esta abaixo E a direita",
+                        },
+                    },
+                },
+                "outputs": {
+                    "chutar_agora": {"sim": {"to": None, "emit": "chutar"},
+                                     "nao": {"to": None, "emit": None}},
+                    "rumo": {"up": {"to": None, "emit": "up"},
+                             "down": {"to": None, "emit": "down"},
+                             "left": {"to": None, "emit": "left"},
+                             "right": {"to": None, "emit": "right"},
+                             "up_left": {"to": None, "emit": "up_left"},
+                             "up_right": {"to": None, "emit": "up_right"},
+                             "down_left": {"to": None, "emit": "down_left"},
+                             "down_right": {"to": None, "emit": "down_right"}},
+                },
+                "min_confidence": 0,
+                "fallback": None,
+                "x": 40, "y": 120,
+            },
+        },
+    },
+    "racha_laranja": {
+        "id": "racha_laranja",
+        "name": "Racha laranja: marcador paciente",
+        "game": "street_football",
+        "seat": "laranja_1",
+        "entry": "posse",
+        "nodes": {
+            # Funil de varios saltos: primeiro le de quem e a bola, e so entao
+            # decide — num no diferente para cada situacao. Custa uma chamada a
+            # mais por jogada e em troca cada no faz uma pergunta so, mais nitida.
+            "posse": {
+                "label": "De quem e a bola",
+                "questions": {
+                    "posse": {
+                        "type": "choice",
+                        "label": "Quem esta com a bola",
+                        "instructions": (
+                            "Leia `com_a_bola`, `adversario_com_a_bola` e `bola_solta`. "
+                            "Exatamente um dos tres e verdadeiro."
+                        ),
+                        "criteria": {
+                            "minha": "`com_a_bola` verdadeiro: a bola e minha",
+                            "dele": "`adversario_com_a_bola` verdadeiro: o adversario domina",
+                            "solta": "`bola_solta` verdadeiro: ninguem domina a bola",
+                        },
+                    },
+                },
+                "outputs": {
+                    "posse": {"minha": {"to": "atacar", "emit": None},
+                              "dele": {"to": "marcar", "emit": None},
+                              "solta": {"to": "disputar", "emit": None}},
+                },
+                "min_confidence": 0,
+                "fallback": None,
+                "x": 40, "y": 60,
+            },
+            "atacar": {
+                "label": "Com a bola: chegar perto antes de chutar",
+                "questions": {
+                    "chutar_agora": {
+                        "type": "noul",
+                        "label": "Ja da para chutar",
+                        "instructions": (
+                            "Este jogador e paciente: nao chuta de longe. Responda alto so "
+                            "quando `pronto_para_chutar` for verdadeiro — ele ja exige estar "
+                            "DENTRO da pequena area (`na_area_do_gol`), que e de onde o gol "
+                            "vale. De fora da area o chute e anulado; nesse caso leve a bola."
+                        ),
+                        "threshold": 0.6,
+                    },
+                    "rumo": {
+                        "type": "choice",
+                        "label": "Levando a bola",
+                        "instructions": (
+                            "Leve a bola para `meu_gol.direcao` ate entrar na area. "
+                            "MAS os corpos se esbarram: voce NAO atravessa o adversario. Se `adversarios[0].encostando` for verdadeiro, ir reto e ficar preso nele; nesse caso escolha a diagonal que contorna, desviando pelo lado oposto ao `distancia_y` dele. "
+                            + 'Os campos `distancia_x` e `distancia_y` dizem quanto falta em cada eixo, com sinal: positivo e para a direita e para baixo. As diagonais quase sempre andam menos que a escada de dois comandos retos.'
+                        ),
+                        "criteria": {
+                            "up": "So para cima: o alvo esta quase na mesma coluna, com y menor",
+                            "down": "So para baixo: o alvo esta quase na mesma coluna, com y maior",
+                            "left": "So para a esquerda: o alvo esta quase na mesma linha, com x menor",
+                            "right": "So para a direita: o alvo esta quase na mesma linha, com x maior",
+                            "up_left": "Diagonal: o alvo esta acima E a esquerda",
+                            "up_right": "Diagonal: o alvo esta acima E a direita",
+                            "down_left": "Diagonal: o alvo esta abaixo E a esquerda",
+                            "down_right": "Diagonal: o alvo esta abaixo E a direita",
+                        },
+                    },
+                },
+                "outputs": {
+                    "chutar_agora": {"sim": {"to": None, "emit": "chutar"},
+                                     "nao": {"to": None, "emit": None}},
+                    "rumo": {"up": {"to": None, "emit": "up"},
+                             "down": {"to": None, "emit": "down"},
+                             "left": {"to": None, "emit": "left"},
+                             "right": {"to": None, "emit": "right"},
+                             "up_left": {"to": None, "emit": "up_left"},
+                             "up_right": {"to": None, "emit": "up_right"},
+                             "down_left": {"to": None, "emit": "down_left"},
+                             "down_right": {"to": None, "emit": "down_right"}},
+                },
+                "min_confidence": 0,
+                "fallback": None,
+                "x": 360, "y": 40,
+            },
+            "marcar": {
+                "label": "Sem a bola: marcar quem esta com ela",
+                "questions": {
+                    "rumo": {
+                        "type": "choice",
+                        "label": "Para cima do adversario",
+                        "instructions": (
+                            "O adversario esta com a bola. Va para cima dele: use "
+                            "`adversarios[0].direcao`. Encostar nele e o que permite roubar. "
+                            + 'Os campos `distancia_x` e `distancia_y` dizem quanto falta em cada eixo, com sinal: positivo e para a direita e para baixo. As diagonais quase sempre andam menos que a escada de dois comandos retos.'
+                        ),
+                        "criteria": {
+                            "up": "So para cima: o alvo esta quase na mesma coluna, com y menor",
+                            "down": "So para baixo: o alvo esta quase na mesma coluna, com y maior",
+                            "left": "So para a esquerda: o alvo esta quase na mesma linha, com x menor",
+                            "right": "So para a direita: o alvo esta quase na mesma linha, com x maior",
+                            "up_left": "Diagonal: o alvo esta acima E a esquerda",
+                            "up_right": "Diagonal: o alvo esta acima E a direita",
+                            "down_left": "Diagonal: o alvo esta abaixo E a esquerda",
+                            "down_right": "Diagonal: o alvo esta abaixo E a direita",
+                        },
+                    },
+                },
+                "outputs": {"rumo": {"up": {"to": None, "emit": "up"},
+                             "down": {"to": None, "emit": "down"},
+                             "left": {"to": None, "emit": "left"},
+                             "right": {"to": None, "emit": "right"},
+                             "up_left": {"to": None, "emit": "up_left"},
+                             "up_right": {"to": None, "emit": "up_right"},
+                             "down_left": {"to": None, "emit": "down_left"},
+                             "down_right": {"to": None, "emit": "down_right"}}},
+                "min_confidence": 0,
+                "fallback": None,
+                "x": 360, "y": 260,
+            },
+            "disputar": {
+                "label": "Bola solta: correr nela",
+                "questions": {
+                    "rumo": {
+                        "type": "choice",
+                        "label": "Atras da bola",
+                        "instructions": (
+                            "A bola esta solta e quem chegar primeiro fica com ela. "
+                            "Va em `bola.direcao`. " + 'Os campos `distancia_x` e `distancia_y` dizem quanto falta em cada eixo, com sinal: positivo e para a direita e para baixo. As diagonais quase sempre andam menos que a escada de dois comandos retos.'
+                        ),
+                        "criteria": {
+                            "up": "So para cima: o alvo esta quase na mesma coluna, com y menor",
+                            "down": "So para baixo: o alvo esta quase na mesma coluna, com y maior",
+                            "left": "So para a esquerda: o alvo esta quase na mesma linha, com x menor",
+                            "right": "So para a direita: o alvo esta quase na mesma linha, com x maior",
+                            "up_left": "Diagonal: o alvo esta acima E a esquerda",
+                            "up_right": "Diagonal: o alvo esta acima E a direita",
+                            "down_left": "Diagonal: o alvo esta abaixo E a esquerda",
+                            "down_right": "Diagonal: o alvo esta abaixo E a direita",
+                        },
+                    },
+                },
+                "outputs": {"rumo": {"up": {"to": None, "emit": "up"},
+                             "down": {"to": None, "emit": "down"},
+                             "left": {"to": None, "emit": "left"},
+                             "right": {"to": None, "emit": "right"},
+                             "up_left": {"to": None, "emit": "up_left"},
+                             "up_right": {"to": None, "emit": "up_right"},
+                             "down_left": {"to": None, "emit": "down_left"},
+                             "down_right": {"to": None, "emit": "down_right"}}},
+                "min_confidence": 0,
+                "fallback": None,
+                "x": 360, "y": 480,
+            },
+        },
+    },
     "suporte_triagem": {
         "id": "suporte_triagem",
         "name": "Suporte: triagem de ticket",
@@ -449,6 +742,9 @@ def sanitize_funnel(raw):
         "id": fid,
         "name": str(raw.get("name") or "").strip()[:80] or fid,
         "game": str(raw.get("game") or "").strip()[:60],
+        # A cadeira que este funil joga. Vazio = funil de jogo inteiro, como
+        # sempre foi. Preenchido = este cerebro joga esta vaga da partida.
+        "seat": str(raw.get("seat") or "").strip()[:60],
         "entry": entry,
         "nodes": nodes,
         "action_pos": posicoes,

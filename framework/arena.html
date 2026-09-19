@@ -335,6 +335,15 @@
   .funilAcoes{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .funilAcoes button{padding:5px 11px;font-size:12px}
   .divisor{width:1px;height:20px;background:var(--line)}
+  .abas{display:flex;gap:4px;flex:1 1 100%;overflow-x:auto;margin:2px -2px -11px;
+        padding:0 2px;border-bottom:1px solid var(--line)}
+  .aba{font:inherit;font-size:12px;padding:5px 11px;white-space:nowrap;cursor:pointer;
+       background:transparent;border:1px solid transparent;border-bottom:none;
+       border-radius:7px 7px 0 0;color:var(--faint)}
+  .aba:hover{color:var(--text);background:#ffffff08}
+  .aba.ativa{color:var(--text);background:var(--panel2);border-color:var(--line)}
+  .aba .pisca{color:var(--green)}
+  .aba .cadeira{color:var(--dim);margin-left:5px}
 
   .qBloco{border-top:1px solid #16233a}
   .qBloco.rota{background:#0b1a16}
@@ -397,6 +406,7 @@
         <span class="divisor"></span>
         <button id="newFunnel">＋ Novo funil</button>
       </div>
+      <div class="abas" id="abas"></div>
     </div>
 
     <div class="pane newFunnelBox" id="newFunnelBox" hidden>
@@ -477,7 +487,7 @@
             <span id="jevText">—</span>
           </div>
           <div class="probeRow">
-            <input id="peerUrl" value="http://127.0.0.1:8100" placeholder="http://host:porta do jogo">
+            <input id="peerUrl" placeholder="http://host:porta do jogo">
             <button id="probe">handshake</button>
             <button id="lerInputs" title="mostra no log o estado que o jogo está mandando agora">👁 ler inputs</button>
           </div>
@@ -520,6 +530,15 @@ const $ = s => document.querySelector(s);
 const NODE_W = 252;
 
 let funnels={}, funnelId=null, funnel=null;
+/* `funnelId` e o funil ABERTO na tela; `pilotoId` e o que o driver usa.
+   Eram a mesma coisa enquanto havia um cerebro so. Com varias cadeiras,
+   quem escolhe o cerebro e o jogo — e ai o editor vira janela. */
+let pilotoId='auto';
+/* `seguindo` e o terceiro conceito: a tela acompanha quem decidiu, em vez
+   de ficar presa num funil. Sem ele so dava para ver um funil no instante
+   exato em que ele jogava. */
+let seguindo=true;
+let ultimoDecisor=null;
 let selectedNode=null, lastTrace=null;
 /* A ultima leitura de cada funil. Trocar de funil no dropdown zerava o
    lastTrace, e como as porcentagens so voltam com uma decisao nova, um funil
@@ -1785,6 +1804,16 @@ async function pollDecisions(){
         ultimaLeitura[d.funnel]={trace:d.trace,action:d.action};
     }
     /* o grafo acende com a decisão mais recente do funil aberto: varro de trás */
+    /* No automático a tela acompanha quem acabou de decidir: numa partida de
+       várias cadeiras é assim que dá para ver os cérebros se revezando.
+       Nunca no meio de um arrasto — puxar o canvas da mão de alguém é pior
+       do que mostrar o grafo anterior por mais um instante. */
+    const ultima=data.decisions[data.decisions.length-1];
+    if(ultima?.funnel) ultimoDecisor=ultima.funnel;
+    if(seguindo&&ultima?.funnel&&funnels[ultima.funnel]
+       &&ultima.funnel!==funnelId&&!drag&&!ligando&&!puxandoAcao)
+      loadFunnel(ultima.funnel,false);
+    else if(ultima?.funnel) renderAbas();   /* pelo menos a bolinha muda de aba */
     for(let i=data.decisions.length-1;i>=0;i--){
       const d=data.decisions[i];
       if(d.funnel===funnelId){ highlightTrace(d.trace||[],d.action); break; }
@@ -1824,18 +1853,60 @@ async function refreshHandshake(){
 async function loadFunnels(){
   funnels=(await (await fetch('/api/funnels',{cache:'no-store'})).json()).funnels||{};
   const list=Object.values(funnels);
-  $('#funnelSel').innerHTML=list.map(f=>`<option value="${f.id}">${f.name}</option>`).join('');
-  /* mantém o funil lembrado; só cai no primeiro se ele foi apagado */
-  if(!funnels[funnelId]) funnelId=list[0]?.id??null;
-  $('#funnelSel').value=funnelId;
-  loadFunnel(funnelId);
+  $('#funnelSel').innerHTML='<option value="auto">automático — o jogo escolhe</option>'
+    +list.map(f=>`<option value="${f.id}">${f.name}${f.seat?` · ${f.seat}`:''}</option>`).join('');
+  /* mantém o funil lembrado; só cai no primeiro se ele foi apagado.
+     `auto` nunca está na lista de funis, e não pode ser atropelado por isso. */
+  if(pilotoId!=='auto'&&!funnels[pilotoId]) pilotoId=list[0]?.id??'auto';
+  if(!funnels[funnelId]) funnelId=(pilotoId!=='auto'?pilotoId:list[0]?.id)??null;
+  $('#funnelSel').value=pilotoId;
+  /* sem pilotar: quem manda no driver aqui é o que o servidor já lembrava */
+  loadFunnel(funnelId,false);
 }
 
-function loadFunnel(id){
+/* As abas so mexem no que esta ABERTO. Quem pilota continua sendo o seletor
+   la em cima: da para estudar o funil do laranja com o azul no comando, ou
+   com o jogo escolhendo sozinho a cada lance. */
+function renderAbas(){
+  const seguir='<button class="aba'+(seguindo?' ativa':'')+'" data-aba="~seguir"'
+    +' title="a tela acompanha o funil de quem acabou de decidir">'
+    +'&#128065; seguir quem joga</button>';
+  const outras=Object.values(funnels).map(f=>{
+    const pisca=ultimoDecisor===f.id?'<span class="pisca">&#9679;</span> ':'';
+    const cadeira=f.seat?'<span class="cadeira">'+esc(f.seat)+'</span>':'';
+    const ativa=(!seguindo&&f.id===funnelId)?' ativa':'';
+    return '<button class="aba'+ativa+'" data-aba="'+esc(f.id)+'" title="'+esc(f.name)+'">'
+      +pisca+esc(f.name)+cadeira+'</button>';
+  });
+  $('#abas').innerHTML=[seguir].concat(outras).join('');
+}
+
+function olharAba(id){
+  if(id==='~seguir'){
+    seguindo=true;
+    if(ultimoDecisor&&funnels[ultimoDecisor]&&ultimoDecisor!==funnelId)
+      loadFunnel(ultimoDecisor,false);
+    else renderAbas();
+    return;
+  }
+  /* olhar NAO pilota: abrir um funil para estudar nao pode trocar o cerebro
+     que esta jogando no meio da partida */
+  seguindo=false;
+  loadFunnel(id,false);
+}
+
+$('#abas').addEventListener('click',e=>{
+  /* delegacao: o alvo pode ser o bolinha ou a cadeira dentro do botao */
+  let n=e.target;
+  while(n&&!(n.dataset&&n.dataset.aba)) n=n.parentNode;
+  if(n) olharAba(n.dataset.aba);
+});
+
+function loadFunnel(id,pilotar=true){
   funnelId=id;
   if(!funnels[id]){            /* nenhum funil disponível: não há o que abrir */
     funnel=null; selectedNode=null; lastTrace=null;
-    renderGraph(); renderInspector();
+    renderGraph(); renderInspector(); renderAbas();
     return;
   }
   funnel=JSON.parse(JSON.stringify(funnels[id]));
@@ -1843,8 +1914,9 @@ function loadFunnel(id){
   /* volta com a ultima leitura deste funil, se houver: abrir um funil parado
      nao deve apagar os numeros que ele ja mostrou */
   lastTrace=ultimaLeitura[id]?.trace||null;
-  /* abrir um funil é escolher com o que pilotar: sem dropdown separado */
-  drive('funnel',id);
+  /* abrir um funil é escolher com o que pilotar — exceto no automático,
+     onde quem escolhe é o jogo e a tela só está assistindo */
+  if(pilotar&&pilotoId!=='auto') drive('funnel',id);
   /* o agente pode ter mudado, e com ele as ações disponíveis */
   /* restaurar um funil embutido devolve o original; um funil seu some de vez */
   const btn=$('#revertFunnel');
@@ -1853,7 +1925,7 @@ function loadFunnel(id){
     ? 'descarta suas alterações e volta ao funil que vem no código'
     : 'apaga este funil de vez';
   btn.disabled=funnel.builtin&&!funnel.saved;
-  renderGraph(); renderInspector();
+  renderGraph(); renderInspector(); renderAbas();
 }
 
 /* =====================================================================
@@ -2061,7 +2133,18 @@ $('#nfCreate').addEventListener('click',criarFunil);
 $('#nfName').addEventListener('keydown',e=>{ if(e.key==='Enter') criarFunil(); });
 $('#nfGame').addEventListener('keydown',e=>{ if(e.key==='Enter') criarFunil(); });
 
-$('#funnelSel').addEventListener('change',e=>loadFunnel(e.target.value));
+$('#funnelSel').addEventListener('change',e=>escolherPiloto(e.target.value));
+
+function escolherPiloto(id){
+  pilotoId=id;
+  drive('funnel',id);
+  if(id==='auto'){
+    /* no automático a tela volta a seguir quem decidir; até lá, mostra algum */
+    seguindo=true;
+    if(!funnels[funnelId]) loadFunnel(Object.keys(funnels)[0]??null,false);
+    else renderAbas();
+  } else { seguindo=false; loadFunnel(id,false); }
+}
 $('#addNode').addEventListener('click',()=>{
   /* o nó nasce vazio: as perguntas você adiciona no inspector, uma a uma */
   let n=1; while(funnel.nodes['no_'+n]) n++;
@@ -2113,7 +2196,7 @@ $('#revertFunnel').addEventListener('click',async()=>{
   $('#conn').textContent=era?'funil restaurado':'funil apagado';
 });
 /* ---- pilotagem ---- */
-let driveHzFocus=false;
+let driveHzFocus=false, peerUrlFocus=false;
 
 async function drive(cmd,value){
   try{
@@ -2156,6 +2239,9 @@ function applyDrive(d){
   $('#driveRun').classList.toggle('on',!!d.running);
   $('#driveStep').disabled=!!d.running||!!d.busy;
   if(!driveHzFocus&&d.hz!=null) $('#driveHz').value=d.hz;
+  /* o alvo vem do servidor, que o guarda entre sessões; sem isto o campo
+     voltava para a porta padrão a cada F5 */
+  if(!peerUrlFocus&&d.target&&$('#peerUrl').value!==d.target) $('#peerUrl').value=d.target;
   const nome=funnels[d.funnel]?.name||d.funnel||'—';
   $('#driveFunnelNome').innerHTML=`com <b>${nome}</b>`;
   mostrarSujo();
@@ -2180,8 +2266,13 @@ $('#driveRun').addEventListener('click',async()=>{
 $('#driveStep').addEventListener('click',()=>drive('step'));
 $('#driveHz').addEventListener('focus',()=>driveHzFocus=true);
 $('#driveHz').addEventListener('blur',()=>driveHzFocus=false);
+$('#peerUrl').addEventListener('focus',()=>peerUrlFocus=true);
+$('#peerUrl').addEventListener('blur',()=>peerUrlFocus=false);
 $('#driveHz').addEventListener('change',e=>drive('hz',e.target.value));
 $('#peerUrl').addEventListener('change',e=>drive('target',e.target.value));
+$('#peerUrl').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ e.preventDefault(); $('#probe').click(); }
+});
 
 $('#feedClear').addEventListener('click',clearFeed);
 
@@ -2315,7 +2406,10 @@ addEventListener('resize',()=>{
      sempre no primeiro da lista e perderia onde você parou */
   try{
     const d=await (await fetch('/api/drive',{cache:'no-store'})).json();
-    if(d.funnel&&d.funnel!=='auto') funnelId=d.funnel;
+    pilotoId=d.funnel||'auto';
+    /* com um funil fixo no comando, a tela abre nele; no automatico, segue */
+    seguindo=(pilotoId==='auto');
+    if(pilotoId!=='auto') funnelId=pilotoId;
   }catch(e){ /* framework fora: cai no primeiro da lista, como antes */ }
 
   await loadFunnels();

@@ -387,7 +387,119 @@ function drawSupport(v,W,H){
   linhas.forEach((linha,i)=>ctx.fillText(linha,bx+17,by+53+i*21));
 }
 
-const PAINTERS={vitamin_hunt:drawVitamin,race:drawRace,support:drawSupport};
+/* Futebol de rua. O campo do jogo é 120x80 em unidades próprias; aqui ele
+   vira pixels uma vez só, e todo o resto desenha em cima dessa conta. */
+function futebolGeom(v,W,H){
+  const escala=Math.min((W-40)/v.width,(H-56)/v.height);
+  const cw=v.width*escala, ch=v.height*escala;
+  return {escala, x0:(W-cw)/2, y0:(H-ch)/2+6, cw, ch,
+          px:u=>(W-cw)/2+u*escala, py:u=>(H-ch)/2+6+u*escala};
+}
+
+/* Um chinelo visto de cima: sola, tira em V e o dedão. */
+function chinelo(cx,cy,r,cor){
+  ctx.save(); ctx.translate(cx,cy);
+  ctx.fillStyle=cor;
+  ctx.beginPath(); ctx.ellipse(0,0,r*0.62,r,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#0b1a12'; ctx.lineWidth=Math.max(1,r*0.14);
+  ctx.beginPath();
+  ctx.moveTo(-r*0.42,r*0.22); ctx.lineTo(0,-r*0.18); ctx.lineTo(r*0.42,r*0.22);
+  ctx.stroke();
+  ctx.beginPath(); ctx.arc(0,-r*0.42,r*0.13,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawFutebol(v,W,H){
+  clearBoard(W,H);
+  const g=futebolGeom(v,W,H);
+  const un=x=>x*g.escala;
+
+  /* asfalto */
+  ctx.fillStyle='#16202b'; ctx.fillRect(g.x0,g.y0,g.cw,g.ch);
+  ctx.strokeStyle='#26344e'; ctx.lineWidth=2;
+  ctx.strokeRect(g.x0+.5,g.y0+.5,g.cw-1,g.ch-1);
+
+  /* riscos de giz: a pequena área e a linha de fundo */
+  ctx.setLineDash([7,6]); ctx.lineWidth=2; ctx.strokeStyle='#7d8ba3';
+  ctx.beginPath();
+  ctx.moveTo(g.px(v.box.x),g.py(v.box.top));
+  ctx.lineTo(g.px(v.width),g.py(v.box.top));
+  ctx.moveTo(g.px(v.box.x),g.py(v.box.bottom));
+  ctx.lineTo(g.px(v.width),g.py(v.box.bottom));
+  ctx.moveTo(g.px(v.box.x),g.py(v.box.top));
+  ctx.lineTo(g.px(v.box.x),g.py(v.box.bottom));
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  /* a área acende quando ele está dentro: é a dica de que dá para chutar */
+  ctx.fillStyle=v.na_area?'rgba(85,230,165,.14)':'rgba(125,139,163,.06)';
+  ctx.fillRect(g.px(v.box.x),g.py(v.box.top),
+               un(v.width-v.box.x),un(v.box.bottom-v.box.top));
+
+  /* boca do gol, entre os dois chinelos */
+  ctx.strokeStyle='#55e6a5'; ctx.lineWidth=3;
+  ctx.beginPath();
+  ctx.moveTo(g.px(v.width)-1,g.py(v.goal.top));
+  ctx.lineTo(g.px(v.width)-1,g.py(v.goal.bottom));
+  ctx.stroke();
+  const rc=Math.max(7,un(3.4));
+  chinelo(g.px(v.width)-rc*0.5,g.py(v.goal.top),rc,'#ffc857');
+  chinelo(g.px(v.width)-rc*0.5,g.py(v.goal.bottom),rc,'#ff9f43');
+
+  /* linha do jogador até a bola, quando ela está solta: mostra o alvo */
+  if(!v.com_a_bola){
+    ctx.strokeStyle='rgba(90,169,255,.35)'; ctx.lineWidth=1.5;
+    ctx.setLineDash([4,5]);
+    ctx.beginPath();
+    ctx.moveTo(g.px(v.player.x),g.py(v.player.y));
+    ctx.lineTo(g.px(v.ball.x),g.py(v.ball.y));
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  /* bola */
+  const rb=Math.max(4,un(1.9));
+  ctx.fillStyle='#f3f0df';
+  ctx.beginPath(); ctx.arc(g.px(v.ball.x),g.py(v.ball.y),rb,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#16202b';
+  ctx.beginPath(); ctx.arc(g.px(v.ball.x),g.py(v.ball.y),rb*0.38,0,Math.PI*2); ctx.fill();
+
+  /* jogador: aro verde quando está com a bola dominada */
+  const rp=Math.max(6,un(2.9));
+  const px=g.px(v.player.x), py=g.py(v.player.y);
+  if(v.com_a_bola){
+    ctx.strokeStyle='#55e6a5'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(px,py,rp+5,0,Math.PI*2); ctx.stroke();
+  }
+  ctx.fillStyle='#46b7ff';
+  ctx.beginPath(); ctx.arc(px,py,rp,0,Math.PI*2); ctx.fill();
+
+  /* para onde ele está correndo */
+  const setas={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
+  const d=setas[v.player.rumo];
+  if(d){
+    ctx.strokeStyle='#dce6f5'; ctx.lineWidth=2.5;
+    ctx.beginPath();
+    ctx.moveTo(px,py);
+    ctx.lineTo(px+d[0]*(rp+9),py+d[1]*(rp+9));
+    ctx.stroke();
+  }
+
+  /* placar e o aviso da última jogada */
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  ctx.fillStyle='#8296b4'; ctx.font='11px ui-monospace';
+  ctx.fillText(`gols: ${v.gols}`,g.x0+4,g.y0-8);
+  if(v.aviso){
+    const golzao=v.aviso.startsWith('GOL');
+    ctx.textAlign='center';
+    ctx.fillStyle=golzao?'#55e6a5':'#ffc857';
+    ctx.font=`bold ${golzao?26:14}px ui-monospace`;
+    ctx.fillText(v.aviso,W/2,g.y0+g.ch/2);
+    ctx.textAlign='left';
+  }
+}
+
+const PAINTERS={vitamin_hunt:drawVitamin,race:drawRace,support:drawSupport,
+                street_football:drawFutebol};
 
 function paint(){
   if(!snap) return;

@@ -374,6 +374,11 @@ class Driver:
         self.target = (sessao.get("target")
                        or os.getenv("GAME_URL", "http://127.0.0.1:8100")).rstrip("/")
         self.funnel_id = sessao.get("funnel") or "auto"
+        # Cadeira deste driver. Vazio = joga todas as cadeiras que o jogo
+        # oferecer, que e o caso de um PC so. Preenchida = so joga a dela, e
+        # ai varios drivers (outras janelas, outras maquinas) dividem a
+        # partida sem disputar a vez.
+        self.seat = str(sessao.get("seat") or os.getenv("JEV_SEAT", "")).strip()
         try:
             self.hz = max(0.2, min(4.0, float(sessao.get("hz", 1.0))))
         except (TypeError, ValueError):
@@ -382,7 +387,12 @@ class Driver:
         # comecar a gastar chamadas de API sozinho.
         self.running = False
         self.retomado = bool(sessao)
-        self.busy = False
+        # Um pensador por cadeira. `ocupadas[cadeira]` diz se aquela ja esta
+        # pensando; um `busy` unico do driver faria as cadeiras esperarem
+        # uma pela outra, que e exatamente o que a gente quer evitar.
+        self.ocupadas = {}
+        self.cadeiras = []      # elenco anunciado pelo jogo, no frame
+        self._trava = threading.Lock()
         self.last = None
         self.error = None
         self.frames = 0
@@ -395,39 +405,82 @@ class Driver:
         with urlopen(req, timeout=8) as response:
             return json.loads(response.read().decode("utf-8"))
 
-    def _send_action(self, action, frame_no, signals):
+    def _send_action(self, action, frame_no, signals, seat=""):
+        # `seat` vai no corpo mesmo quando so existe um driver: e o campo que
+        # o juiz usa para recusar acao de quem nao esta na vez, e o unico que
+        # seria caro acrescentar depois, com acoes ja gravadas no formato velho.
         body = json.dumps({"action": action, "by": SERVICE, "frame": frame_no,
-                           "signals": signals}, ensure_ascii=False).encode("utf-8")
+                           "seat": seat, "signals": signals}, ensure_ascii=False).encode("utf-8")
         req = Request(f"{self.target}/api/action", data=body, method="POST",
                       headers={"Content-Type": "application/json",
                                "User-Agent": f"{SERVICE}/{VERSION}", "X-Client": SERVICE})
         with urlopen(req, timeout=8) as response:
             return json.loads(response.read().decode("utf-8"))
 
-    def _pick_funnel(self, game_id):
+    def _pick_funnel(self, game_id, seat=None):
+        """Qual cerebro decide este frame.
+
+        Funil escolhido na mao vence sempre. No automatico, a cadeira vem
+        antes do jogo: numa partida de varios Jevs, cada frame chega com a
+        cadeira da vez, e e ela que diz quem pensa agora.
+        """
         funnels = funnel.load_funnels()
         if self.funnel_id and self.funnel_id != "auto":
             spec = funnels.get(self.funnel_id)
             if not spec:
                 raise ValueError(f"Funil desconhecido: {self.funnel_id!r}")
             return spec
+        if seat:
+            for spec in funnels.values():
+                if spec.get("seat") == seat:
+                    return spec
+            raise ValueError(f"Nenhum funil declara seat={seat!r}. "
+                             f"Crie um funil para essa cadeira ou escolha um na mao.")
         for spec in funnels.values():
             if spec.get("game") == game_id:
                 return spec
         raise ValueError(f"Nenhum funil declara game={game_id!r}. Escolha um na mao.")
 
     # ---- uma volta completa ----
-    def step(self):
-        if self.busy:
-            return None
-        self.busy = True
+    @property
+    def busy(self):
+        """Alguma cadeira pensando agora."""
+        return any(self.ocupadas.values())
+
+    def _pensadores(self):
+        """Uma cadeira, um pensador.
+
+        Com `seat` preenchido este driver e de uma cadeira so — o caso de
+        varias maquinas. Sem ele, mantem um pensador por cadeira do elenco
+        que o jogo anunciou: e o que faz um pensar enquanto o outro anda.
+        """
+        if self.seat:
+            return [self.seat]
+        return list(self.cadeiras) or [""]
+
+    def step(self, cadeira_alvo=None):
+        minha = cadeira_alvo or self.seat or ""
+        with self._trava:
+            if self.ocupadas.get(minha):
+                return None
+            self.ocupadas[minha] = True
         started = time.perf_counter()
         try:
             frame = self._get_frame()
+            # o elenco e do jogo: ele anuncia, o driver so acompanha
+            elenco = [str(s) for s in (frame.get("seats") or []) if str(s)]
+            if elenco:
+                self.cadeiras = elenco
+            cadeira = frame.get("seat") or ""
+            if minha and cadeira != minha:
+                # Nao e a vez desta cadeira. Nao gasta chamada de API nem
+                # manda acao: e assim que os pensadores dividem a partida
+                # sem brigar pela mesma jogada.
+                return None
             actions = [a["id"] for a in frame.get("actions", [])]
             if not actions:
                 raise ValueError("O frame nao trouxe nenhuma acao valida.")
-            spec = self._pick_funnel(frame.get("game"))
+            spec = self._pick_funnel(frame.get("game"), cadeira)
 
             key = _get_api_key()
             if not key:
@@ -437,11 +490,13 @@ class Driver:
                 spec, frame["state"], actions,
                 lambda payload: _call_jev(endpoint, key, payload), model)
 
-            ack = self._send_action(action, frame.get("frame"), signals)
+            ack = self._send_action(action, frame.get("frame"), signals, cadeira)
             self.frames += 1
             self.error = None
             result = {
-                "action": action, "source": "jev", "agent": frame.get("game"),
+                "action": action, "source": "jev",
+                # o log diz qual CADEIRA jogou: e o que deixa a partida legivel
+                "agent": cadeira or frame.get("game"), "seat": cadeira,
                 "funnel": spec["id"], "trace": trace, "hops": len(trace),
                 "signals": signals, "latency_ms": latency_ms, "usage": usage,
                 "frame": frame.get("frame"), "stale": ack.get("stale"),
@@ -451,6 +506,15 @@ class Driver:
             self.last = result
             _record(dict(result))
             return result
+        except HTTPError as exc:
+            if exc.code == 409:
+                # A vez virou enquanto esta cadeira pensava. E uma corrida
+                # normal entre pensadores, nao defeito: o proximo frame ja
+                # traz a cadeira certa. Parar a partida por isso deixaria o
+                # jogo travado por causa de um encontro de milissegundos.
+                self.error = None
+                return None
+            raise
         except Exception as exc:
             self.error = f"{type(exc).__name__}: {exc}"
             self.running = False
@@ -460,13 +524,19 @@ class Driver:
                      "error": self.error})
             return None
         finally:
-            self.busy = False
+            with self._trava:
+                self.ocupadas[minha] = False
 
     def _loop(self):
         while True:
-            if self.running and not self.busy:
-                self.step()
-                time.sleep(max(0.0, 1.0 / max(0.2, self.hz)))
+            if self.running:
+                # cada cadeira livre ganha seu pensador; as ocupadas seguem
+                # pensando sem que ninguem espere por elas
+                for cadeira in self._pensadores():
+                    if not self.ocupadas.get(cadeira):
+                        threading.Thread(target=self.step, args=(cadeira,),
+                                         daemon=True).start()
+                time.sleep(max(0.05, 1.0 / max(0.2, self.hz)))
             else:
                 time.sleep(0.05)
 
@@ -484,12 +554,15 @@ class Driver:
             return {"ok": False, "url": self.target, "error": f"{type(exc).__name__}: {exc}"}
 
     def lembrar(self):
-        _save_session({"target": self.target, "funnel": self.funnel_id, "hz": self.hz})
+        _save_session({"target": self.target, "funnel": self.funnel_id,
+                       "hz": self.hz, "seat": self.seat})
 
     def status(self):
         return {
             "target": self.target, "funnel": self.funnel_id, "hz": self.hz,
+            "seat": self.seat,
             "running": self.running, "busy": self.busy, "frames": self.frames,
+            "seats": list(self.cadeiras), "pensando": [c for c, v in self.ocupadas.items() if v],
             "last": self.last, "error": self.error,
         }
 
@@ -515,6 +588,7 @@ def handshake():
         },
         "funnels": [
             {"id": f["id"], "name": f["name"], "game": f.get("game", ""),
+             "seat": f.get("seat", ""),
              "nodes": len(f["nodes"]),
              "signals": sorted({sid for n in f["nodes"].values()
                                 for sid in (n.get("signals") or {})})}
@@ -687,6 +761,9 @@ class Handler(SimpleHTTPRequestHandler):
                     driver.lembrar()
                 elif cmd == "funnel":
                     driver.funnel_id = str(value or "auto")
+                    driver.lembrar()
+                elif cmd == "seat":
+                    driver.seat = str(value or "").strip()
                     driver.lembrar()
                 elif cmd == "hz":
                     driver.hz = max(0.2, min(4.0, float(value or 1)))
